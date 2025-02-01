@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <title>chatpy.io</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="chat-container">
         <aside class="sidebar">
@@ -35,7 +37,8 @@
             <div class="chat-list">
                 <div class="chat-item">
                     <div class="avatar">
-                        <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111" alt="Usuario 1">
+                        <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111"
+                            alt="Usuario 1">
                     </div>
                     <div class="chat-info">
                         <div>Sistemas Distribuidos</div>
@@ -46,7 +49,6 @@
                         <div class="unread-badge">2</div>
                     </div>
                 </div>
-                <!-- Podemos crear un template para la lista de chats -->
             </div>
         </aside>
 
@@ -54,7 +56,8 @@
             <header class="chat-header">
                 <div class="header-info">
                     <div class="avatar">
-                        <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111" alt="Grupo">
+                        <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111"
+                            alt="Grupo">
                     </div>
                     <div>
                         <h2>Sistemas Distribuidos</h2>
@@ -74,7 +77,8 @@
             <div class="messages-container">
                 <div class="message-group josue">
                     <div class="avatar">
-                        <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Josue">
+                        <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                            alt="Josue">
                     </div>
                     <div class="message received">
                         <strong>Josue</strong>
@@ -85,7 +89,8 @@
 
                 <div class="message-group josue">
                     <div class="avatar">
-                        <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Josue">
+                        <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                            alt="Josue">
                     </div>
                     <div class="message received">
                         <strong>Josue</strong>
@@ -96,7 +101,8 @@
 
                 <div class="message-group robert">
                     <div class="avatar">
-                        <img src="https://images.pexels.com/photos/4792716/pexels-photo-4792716.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Robert">
+                        <img src="https://images.pexels.com/photos/4792716/pexels-photo-4792716.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                            alt="Robert">
                     </div>
                     <div class="message received">
                         <strong>Robert</strong>
@@ -107,7 +113,8 @@
 
                 <div class="message-group robert">
                     <div class="avatar">
-                        <img src="https://images.pexels.com/photos/4792716/pexels-photo-4792716.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Robert">
+                        <img src="https://images.pexels.com/photos/4792716/pexels-photo-4792716.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                            alt="Robert">
                     </div>
                     <div class="message received">
                         <strong>Robert</strong>
@@ -115,6 +122,20 @@
                         <div class="message-time">8:00 p.m.</div>
                     </div>
                 </div>
+
+                <!-- Podemos crear un template para la lista de chats -->
+                <template>
+                    <div class="message-group">
+                        <div class="avatar">
+                            <img src="" alt="">
+                        </div>
+                        <div class="message received">
+                            <strong></strong>
+                            <p></p>
+                            <div class="message-time"></div>
+                        </div>
+                    </div>
+                </template>
 
                 <div class="message sent">
                     <p>Este es mi primer mensaje de prueba ☕</p>
@@ -137,4 +158,5 @@
         </main>
     </div>
 </body>
+
 </html>
