@@ -150,13 +150,44 @@
                 <button class="action-button">
                     <i class="fas fa-smile"></i>
                 </button>
-                <input type="text" class="message-input" placeholder="Escribe un mensaje">
-                <button class="action-button">
-                    <i class="fas fa-microphone"></i>
+                <input type="text" class="message-input" id="message-input" placeholder="Escribe un mensaje">
+                <button class="action-button" id="send-button">
+                    <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
         </main>
     </div>
+
+    <script>
+        document.getElementById('send-button').addEventListener('click', function() {
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value;
+            if (message.trim() !== '') {
+                fetch('/send_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nombre: 'Tu Nombre',
+                        contenido: message
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        messageInput.value = '';
+
+                        // Probamos si se agrega el mensaje en la base de datos
+                        console.log('Success:', data.message);
+                    } else {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    </script>
 </body>
 
 </html>
