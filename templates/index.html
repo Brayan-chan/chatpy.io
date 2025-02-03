@@ -1,234 +1,147 @@
 <!DOCTYPE html>
-<html lang="es">
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <title>chatpy.io</title>
-    <link rel="stylesheet" href="../static/styles.css">
-    <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
-</head>
-
-<body>
-    <div class="chat-container">
-        <nav class="nav-sidebar">
-            <div class="nav-top">
-                <div class="nav-icon action-button">
-                    <i class="fas fa-comment"></i>
-                </div>
-                <div class="unread-total">6</div>
-            </div>
-            <div class="nav-bottom">
-                <div class="nav-icon action-button">
-                    <i class="fas fa-cog"></i>
-                </div>
-                <div class="user-avatar">
-                    <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/461338513_543649241643596_1140871026957553677_n.jpg?ccb=11-4&oh=01_Q5AaIDUIt2ARpZvXBf1kgVemO0mwXtykj8ZxR0YDgFMIlL_S&oe=67AC9A42&_nc_sid=5e03e0&_nc_cat=108"
-                        alt="Tú">
-                </div>
-            </div>
-        </nav>
-
-        <aside class="chat-sidebar">
-            <div class="sidebar-header">
-                <h1>Chats</h1>
-                <div class="header-icons">
-                    <button class="action-button">
-                        <i class="fas fa-user-plus"></i>
-                    </button>
-                    <button class="action-button">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="search-container">
-                <i class="search-icon fas fa-search"></i>
-                <input type="text" class="search-input" placeholder="Buscar">
-            </div>
-
-            <div class="filter-buttons">
-                <button class="filter-button">Todos</button>
-                <button class="filter-button">No leídos</button>
-            </div>
-
-            <div class="chat-list">
-                <div class="chat-item">
-                    <div class="avatar">
-                        <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111"
-                            alt="Grupo">
-                    </div>
-                    <div class="chat-name">Sistemas Distribuidos</div>
-                    <div class="chat-info"><span>Tú: </span>Este es mi primer men...</div>
-                    <div class="chat-time">7:30 p.m.</div>
-                    <div class="unread-badge">2</div>
-                </div>
-            </div>
-        </aside>
-
-        <main class="chat-main">
-            <header class="chat-header">
-                <div class="header-left">
-                    <div class="avatar">
-                        <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111"
-                            alt="Grupo">
-                    </div>
-                    <div>
-                        <h2>Sistemas Distribuidos</h2>
-                        <div style="color: #8f8f8f">Josue, Robert, Tú...</div>
-                    </div>
-                </div>
-                <div class="header-right">
-                    <button class="action-button">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <button class="action-button">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                </div>
-            </header>
-
-            <div class="messages-container">
-                <div class="message-group josue">
-                    <div class="avatar">
-                        <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                            alt="Josue">
-                    </div>
-                    <div class="message received">
-                        <strong>Josue</strong>
-                        <p>Este es el primer mensaje de Josue 🚀</p>
-                        <div class="message-time">7:30 p.m.</div>
-                    </div>
-                </div>
-
-                <div class="message-group josue">
-                    <div class="avatar">
-                        <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                            alt="Josue">
-                    </div>
-                    <div class="message received">
-                        <strong>Josue</strong>
-                        <p>Este es el segundo mensaje de Josue 🚀</p>
-                        <div class="message-time">7:31 p.m.</div>
-                    </div>
-                </div>
-
-                <div class="message-group robert">
-                    <div class="avatar">
-                        <img src="https://images.pexels.com/photos/4792716/pexels-photo-4792716.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                            alt="Robert">
-                    </div>
-                    <div class="message received">
-                        <strong>Robert</strong>
-                        <p>Este es el primer mensaje de Robert ✨</p>
-                        <div class="message-time">7:33 p.m.</div>
-                    </div>
-                </div>
-
-                <div class="message-group robert">
-                    <div class="avatar">
-                        <img src="https://images.pexels.com/photos/4792716/pexels-photo-4792716.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                            alt="Robert">
-                    </div>
-                    <div class="message received">
-                        <strong>Robert</strong>
-                        <p>Este es el segundo mensaje de Robert 🔥</p>
-                        <div class="message-time">8:00 p.m.</div>
-                    </div>
-                </div>
-
-                <div class="message sent">
-                    <p>Este es mi primer mensaje de prueba ☕</p>
-                    <div class="message-time">7:00 a.m.</div>
-                </div>
-            </div>
-
-            <div class="message-input-container">
-                <button class="action-button">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-                <button class="action-button" id="emoji-button">
-                    <i class="fas fa-smile"></i>
-                </button>
-                <div class="message-input-wrapper">
-                    <input type="text" class="message-input" id="message-input" placeholder="Escribe un mensaje">
-                </div>
-                <button class="action-button" id="send-button">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-                <button class="action-button" id="mic-button">
-                    <i class="fas fa-microphone"></i>
-                </button>
-            </div>
-        </main>
-    </div>
-
-    <template id="message-template-sent">
-        <div class="message sent">
-            <p></p>
-            <div class="message-time"></div>
-        </div>
-    </template>
-
-    <template id="message-template-received">
-        <div class="message-group">
-            <div class="avatar"></div>
-            <div class="message received">
-                <strong></strong>
-                <p></p>
-                <div class="message-time"></div>
-            </div>
-        </div>
-    </template>
-
-    <script>
-        document.getElementById('send-button').addEventListener('click', function () {
-            const messageInput = document.getElementById('message-input');
-            const message = messageInput.value;
-            if (message.trim() !== '') {
-                fetch('/send_message', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        nombre: 'Tu Nombre',
-                        contenido: message
-                    })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            messageInput.value = '';
-                            addMessageToChat('Tu Nombre', message, 'sent');
-                        } else {
-                            console.error('Error:', data.message);
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-            }
-        });
-
-        document.getElementById('emoji-button').addEventListener('click', function () {
-            const messageInput = document.getElementById('message-input');
-            messageInput.value += '😊';
-        });
-
-        function addMessageToChat(nombre, contenido, tipo = 'received') {
-            const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
-            const template = document.getElementById(templateId).content.cloneNode(true);
-            if (tipo === 'received') {
-                template.querySelector('strong').textContent = nombre;
-            }
-            template.querySelector('p').textContent = contenido;
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            template.querySelector('.message-time').textContent = timeString;
-            document.querySelector('.messages-container').appendChild(template);
+    <title>Login Form</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-    </script>
-</body>
 
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #e6f7f7 0%, #ffffff 100%);
+        }
+
+        .login-container {
+            background-color: #1a7b7b;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-container {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .icon {
+            background-color: #ffffff;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Asegura que la imagen se recorte dentro del contenedor redondeado */
+        }
+
+        .icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Asegura que la imagen se ajuste correctamente dentro del contenedor */
+            border-radius: 50%; /* Hace que la imagen sea redondeada */
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: white;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #dc143c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 1rem 0;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #c01236;
+        }
+
+        .links {
+            text-align: center;
+        }
+
+        .links a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .links a:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="icon-container">
+            <div class="icon">
+                <img src="../static/images/chatpy.jpg"/>
+            </div>
+        </div>
+        <h1>Login Here</h1>
+        <form>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Enter Username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter Password" required>
+            </div>
+            <button type="submit">Log In</button>
+            <div class="links">
+                <a href="#">Lost your Password?</a>
+                <a href="#">Don't have An account?</a>
+            </div>
+        </form>
+    </div>
+</body>
 </html>

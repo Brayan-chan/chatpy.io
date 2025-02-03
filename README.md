@@ -30,3 +30,7 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+### Instrucciones en local
+
+<img src="instructions.png">

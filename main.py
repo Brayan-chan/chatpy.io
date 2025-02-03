@@ -44,5 +44,12 @@ print(MiBaseDatos.list_collection_names())
 # MiBaseDatos.notes.insert_one({"Nombre":"Mi nota desde colab", "Contenido": "Esta es mi primera nota desde vsc"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+  
+  #Para ejecutar el servidor en local
+  #Descomentar esta línea si se ejecuta en local
+    app.run(debug=True)
+  
+  #Para ejecutar el servidor en Render
+  #Comentar estas líneas si se ejecuta en local
+    #port = int(os.environ.get('PORT', 5000))
+    #app.run(host='0.0.0.0', port=port, debug=True)
