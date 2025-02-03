@@ -9,11 +9,13 @@
     <link rel="stylesheet" href="../static/styles.css">
     <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
     <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    </head>
 </head>
 
 <body>
-    <h1>Holaaaaaaaa</h1>
-    <h2>Este es un chat en tiempo real con Python y JavaScript</h2>
     <div class="chat-container">
         <nav class="nav-sidebar">
             <div class="nav-top">
@@ -92,7 +94,7 @@
                 </div>
             </header>
 
-            <div class="messages-container">
+            <div class="messages-container" id="messages-container">
                 <div class="message-group josue">
                     <div class="avatar">
                         <img src="https://images.pexels.com/photos/5054346/pexels-photo-5054346.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
@@ -229,6 +231,56 @@
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             template.querySelector('.message-time').textContent = timeString;
             document.querySelector('.messages-container').appendChild(template);
+        }
+    </script>
+    <script>
+        const socket = io(); // Conexión Socket.IO
+        const messageInput = document.getElementById('message-input');
+        const messagesContainer = document.getElementById('messages-container');
+        const sendButton = document.getElementById('send-button');
+    
+        // Obtener nombre de usuario y sala (puedes modificar esto)
+        const nombreUsuario = prompt("Ingresa tu nombre:"); // Puedes obtenerlo de otra forma
+        const sala = prompt("Ingresa el nombre de la sala:");
+    
+        socket.on('connect', () => {
+            if (nombreUsuario && sala) {
+                socket.emit('join_room', { sala: sala }); // Unirse a la sala al conectar
+            }
+        });
+    
+        socket.on('joined_room', (data) => {
+          console.log(`Te has unido a la sala: ${data.sala}`);
+        });
+    
+        sendButton.addEventListener('click', () => {
+            const mensaje = messageInput.value;
+            if (mensaje.trim() !== '' && nombreUsuario && sala) {
+                socket.emit('send_message', { nombre: nombreUsuario, contenido: mensaje, sala: sala }); // Emitir mensaje por Socket.IO
+                messageInput.value = ''; // Limpiar input
+            }
+        });
+    
+        socket.on('message', (data) => { // Escuchar eventos 'message'
+            if (data.sala === sala) { // Mostrar solo mensajes de la sala actual
+                addMessageToChat(data.nombre, data.contenido, data.nombre === nombreUsuario ? 'sent' : 'received');
+            }
+        });
+    
+        function addMessageToChat(nombre, contenido, tipo = 'received') {
+            const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
+            const template = document.getElementById(templateId).content.cloneNode(true);
+            if (tipo === 'received') {
+                template.querySelector('strong').textContent = nombre;
+                // Aquí puedes agregar la lógica para el avatar según el nombre (como en tu código original)
+                const avatar = template.querySelector('.avatar');
+                avatar.innerHTML = `<img src="URL_DEL_AVATAR_${nombre}" alt="${nombre}">`; // Reemplaza con tu lógica de avatar
+            }
+            template.querySelector('p').textContent = contenido;
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            template.querySelector('.message-time').textContent = timeString;
+            messagesContainer.appendChild(template);
         }
     </script>
 </body>
