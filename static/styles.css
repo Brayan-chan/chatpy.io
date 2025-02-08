@@ -209,6 +209,8 @@ body {
     display: flex;
     flex-direction: column;
     background-color: #1a1a1a;
+    height: 100%; /* Ensure full height */
+    max-height: 100vh; /* Prevent overflow */
 }
 
 .chat-header {
@@ -239,6 +241,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    scroll-behavior: smooth; /* Add smooth scrolling */
+    min-height: 0; /* Important for Firefox */
+    max-height: calc(100vh - 130px); /* Adjust based on your header and input heights */
 }
 
 .message-group {
@@ -248,10 +253,19 @@ body {
 }
 
 .message {
+    opacity: 0;
     max-width: 65%;
     padding: 0.8rem 1rem;
     border-radius: 15px;
-    position: relative;
+    transform: translateY(20px);
+    animation: messageAppear 0.3s ease forwards;
+}
+
+@keyframes messageAppear {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .message.sent {
