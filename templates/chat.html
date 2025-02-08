@@ -195,7 +195,6 @@
     <script>
         const settingsButton = document.getElementById('settings-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
-
         let isOpen = false;
 
         document.getElementById('send-button').addEventListener('click', function () {
@@ -240,7 +239,9 @@
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             template.querySelector('.message-time').textContent = timeString;
-            document.querySelector('.messages-container').appendChild(template);
+            const messagesContainer = document.querySelector('.messages-container');
+            messagesContainer.appendChild(template);
+            scrollToBottom(messagesContainer);
         }
 
         settingsButton.addEventListener('click', function(event) {
@@ -259,6 +260,60 @@
                 isOpen = false;
             }
         });
+
+        function scrollToBottom(container) {
+            const scrollHeight = container.scrollHeight;
+            container.scrollTo({
+                top: scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const messagesContainer = document.querySelector('.messages-container');
+            const scrollButton = document.createElement('button');
+            scrollButton.className = 'scroll-bottom-button';
+            scrollButton.innerHTML = '<i class="fas fa-arrow-down"></i>';
+            scrollButton.style.display = 'none';
+            document.querySelector('.chat-main').appendChild(scrollButton);
+
+            messagesContainer.addEventListener('scroll', function() {
+                const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100;
+                scrollButton.style.display = isNearBottom ? 'none' : 'block';
+            });
+
+            scrollButton.addEventListener('click', function() {
+                scrollToBottom(messagesContainer);
+            });
+        });
+
+        const style = document.createElement('style');
+        style.textContent = `
+            .scroll-bottom-button {
+                position: absolute;
+                bottom: 80px;
+                right: 20px;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background-color: #056162;
+                border: none;
+                color: white;
+                cursor: pointer;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+                z-index: 100;
+                transition: all 0.3s ease;
+            }
+
+            .scroll-bottom-button:hover {
+                background-color: #0a7373;
+                transform: translateY(-2px);
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 
