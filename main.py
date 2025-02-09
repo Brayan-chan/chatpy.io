@@ -20,10 +20,12 @@ def send_message():
     if 'user_id' not in session:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
     data = request.json
-    nombre = data.get('nombre')
     contenido = data.get('contenido')
-    if nombre and contenido:
-        MiBaseDatos.chats.insert_one({"Nombre": nombre, "Contenido": contenido})
+    if contenido:
+        user_id = session['user_id']
+        user = MiBaseDatos.usuarios.find_one({"_id": user_id})
+        nombre = user['username']
+        MiBaseDatos.chats.insert_one({"Nombre": nombre, "Contenido": contenido, "user_id": user_id})
         return jsonify({"status": "success"}), 200
     return jsonify({"status": "error", "message": "Invalid data"}), 400
 
