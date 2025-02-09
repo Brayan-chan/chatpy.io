@@ -21,14 +21,23 @@ def send_message():
     if 'user_id' not in session:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
     data = request.json
-    contenido = data.get('contenido')
-    if contenido:
-        user_id = session['user_id']
-        user = MiBaseDatos.usuarios.find_one({"_id": user_id})
-        nombre = user['username']
-        timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()  # Guardar la fecha y hora en formato ISO con zona horaria UTC
+    sender = data.get('sender')
+    receiver = data.get('receiver')
+    message_type = data.get('type')
+    message_content = data.get('message')
+    if sender and receiver and message_content:
+        timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
+        message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
         try:
-            MiBaseDatos.chats.insert_one({"Nombre": nombre, "Contenido": contenido, "user_id": user_id, "timestamp": timestamp})
+            MiBaseDatos.mensajes.insert_one({
+                "_id": message_id,
+                "sender": sender,
+                "receiver": receiver,
+                "type": message_type,
+                "message": message_content,
+                "sent_at": timestamp,
+                "read_by": []
+            })
             return jsonify({"status": "success"}), 200
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -84,12 +93,12 @@ def get_messages():
     if 'user_id' not in session:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
     user_id = session['user_id']
-    messages = list(MiBaseDatos.chats.find({"user_id": user_id}))
+    messages = list(MiBaseDatos.mensajes.find({"$or": [{"sender": user_id}, {"receiver": user_id}]}))
     for message in messages:
         message['_id'] = str(message['_id'])
-        utc_time = datetime.fromisoformat(message['timestamp'])
-        local_time = utc_time.astimezone(timezone('America/Mexico_City'))  # Convertir a la zona horaria local
-        message['timestamp'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+        utc_time = datetime.fromisoformat(message['sent_at'])
+        local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
 uri = os.getenv('MONGO_URI')
@@ -107,6 +116,10 @@ MiBaseDatos = client['chat']
 # Crear la colección 'usuarios' si no existe
 if 'usuarios' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('usuarios')
+
+# Crear la colección 'mensajes' si no existe
+if 'mensajes' not in MiBaseDatos.list_collection_names():
+    MiBaseDatos.create_collection('mensajes')
 
 print(MiBaseDatos)
 
