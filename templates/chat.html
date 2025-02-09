@@ -44,7 +44,7 @@
             <div class="sidebar-header">
                 <h1>Chats</h1>
                 <div class="header-icons">
-                    <button class="action-button">
+                    <button class="action-button" id="add-contact-button">
                         <i class="fas fa-user-plus"></i>
                     </button>
                     <button class="action-button">
@@ -172,6 +172,18 @@
                 </button>
             </div>
         </main>
+    </div>
+
+    <!-- Modal para agregar contactos -->
+    <div id="add-contact-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Agregar Contacto</h2>
+            <form id="add-contact-form">
+                <input type="text" id="contact-username" placeholder="Nombre de usuario" required>
+                <button type="submit">Agregar</button>
+            </form>
+        </div>
     </div>
 
     <template id="message-template-sent">
@@ -304,6 +316,8 @@
                     }
                 })
                 .catch(error => console.error('Error:', error));
+
+            loadContacts();
         });
 
         const style = document.createElement('style');
@@ -333,6 +347,89 @@
             }
         `;
         document.head.appendChild(style);
+
+        // Modal para agregar contactos
+        const addContactButton = document.getElementById('add-contact-button');
+        const addContactModal = document.getElementById('add-contact-modal');
+        const closeButton = document.querySelector('.close-button');
+        const addContactForm = document.getElementById('add-contact-form');
+
+        addContactButton.addEventListener('click', function() {
+            addContactModal.style.display = 'block';
+        });
+
+        closeButton.addEventListener('click', function() {
+            addContactModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target === addContactModal) {
+                addContactModal.style.display = 'none';
+            }
+        });
+
+        function addChatItem(contact) {
+            const chatList = document.querySelector('.chat-list');
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+            chatItem.innerHTML = `
+                <div class="avatar">
+                    <img src="${contact.profile_pic}" alt="${contact.username}">
+                </div>
+                <div class="chat-name">${contact.username}</div>
+                <div class="chat-info"><span></span></div>
+                <div class="chat-time"></div>
+                <div class="unread-badge">0</div>
+            `;
+            chatList.appendChild(chatItem);
+        }
+
+        function loadContacts() {
+            fetch('/get_contacts')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        data.contacts.forEach(contact => {
+                            addChatItem(contact);
+                        });
+                    } else {
+                        console.error('Error al cargar contactos:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        addContactForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const contactUsername = document.getElementById('contact-username').value;
+            fetch('/add_contact', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: sessionUserId,
+                    contact_username: contactUsername
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Contacto agregado exitosamente');
+                        addContactModal.style.display = 'none';
+                        fetch(`/get_user/${contactUsername}`)
+                            .then(response => response.json())
+                            .then(userData => {
+                                if (userData.status === 'success') {
+                                    addChatItem(userData.user);
+                                }
+                            });
+                    } else {
+                        alert('Error al agregar contacto: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        });
     </script>
 </body>
 

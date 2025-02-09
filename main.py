@@ -101,6 +101,51 @@ def get_messages():
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
+@app.route('/add_contact', methods=['POST'])
+def add_contact():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    user_id = data.get('user_id')
+    contact_username = data.get('contact_username')
+    contact = MiBaseDatos.usuarios.find_one({"username": contact_username})
+    if contact:
+        contact_id = contact['_id']
+        try:
+            MiBaseDatos.contactos.update_one(
+                {"_id": user_id},
+                {"$addToSet": {"contacts": contact_id}},
+                upsert=True
+            )
+            return jsonify({"status": "success"}), 200
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
+
+@app.route('/get_user/<username>', methods=['GET'])
+def get_user(username):
+    user = MiBaseDatos.usuarios.find_one({"username": username})
+    if user:
+        user['_id'] = str(user['_id'])
+        return jsonify({"status": "success", "user": user}), 200
+    return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
+
+@app.route('/get_contacts', methods=['GET'])
+def get_contacts():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = session['user_id']
+    user_contacts = MiBaseDatos.contactos.find_one({"_id": user_id})
+    if user_contacts:
+        contacts = []
+        for contact_id in user_contacts['contacts']:
+            contact = MiBaseDatos.usuarios.find_one({"_id": contact_id})
+            if contact:
+                contact['_id'] = str(contact['_id'])
+                contacts.append(contact)
+        return jsonify({"status": "success", "contacts": contacts}), 200
+    return jsonify({"status": "success", "contacts": []}), 200
+
 uri = os.getenv('MONGO_URI')
 
 client = MongoClient(uri)
@@ -120,6 +165,10 @@ if 'usuarios' not in MiBaseDatos.list_collection_names():
 # Crear la colección 'mensajes' si no existe
 if 'mensajes' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('mensajes')
+
+# Crear la colección 'contactos' si no existe
+if 'contactos' not in MiBaseDatos.list_collection_names():
+    MiBaseDatos.create_collection('contactos')
 
 print(MiBaseDatos)
 
