@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
+from pytz import timezone
 
 load_dotenv('.env')
 app = Flask(__name__)
@@ -25,8 +26,12 @@ def send_message():
         user_id = session['user_id']
         user = MiBaseDatos.usuarios.find_one({"_id": user_id})
         nombre = user['username']
-        MiBaseDatos.chats.insert_one({"Nombre": nombre, "Contenido": contenido, "user_id": user_id})
-        return jsonify({"status": "success"}), 200
+        timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()  # Guardar la fecha y hora en formato ISO con zona horaria UTC
+        try:
+            MiBaseDatos.chats.insert_one({"Nombre": nombre, "Contenido": contenido, "user_id": user_id, "timestamp": timestamp})
+            return jsonify({"status": "success"}), 200
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "error", "message": "Invalid data"}), 400
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -73,6 +78,19 @@ def chat():
     if 'user_id' not in session:
         return redirect(url_for('index'))
     return render_template('chat.html')
+
+@app.route('/get_messages', methods=['GET'])
+def get_messages():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = session['user_id']
+    messages = list(MiBaseDatos.chats.find({"user_id": user_id}))
+    for message in messages:
+        message['_id'] = str(message['_id'])
+        utc_time = datetime.fromisoformat(message['timestamp'])
+        local_time = utc_time.astimezone(timezone('America/Mexico_City'))  # Convertir a la zona horaria local
+        message['timestamp'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+    return jsonify({"status": "success", "messages": messages}), 200
 
 uri = os.getenv('MONGO_URI')
 
