@@ -210,15 +210,17 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        nombre: 'Tu Nombre',
-                        contenido: message
+                        sender: sessionUserId,
+                        receiver: 'receiver_id', // Reemplazar con el ID del receptor
+                        type: 'private', // O 'group' si es un chat grupal
+                        message: message
                     })
                 })
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
                             messageInput.value = '';
-                            addMessageToChat('Tu Nombre', message, 'sent');
+                            addMessageToChat(sessionUserId, message, 'sent');
                         } else {
                             console.error('Error:', data.message);
                         }
@@ -294,8 +296,8 @@
                 .then(data => {
                     if (data.status === 'success') {
                         data.messages.forEach(message => {
-                            const tipo = message.user_id === sessionUserId ? 'sent' : 'received';
-                            addMessageToChat(message.Nombre, message.Contenido, tipo, message.timestamp);
+                            const tipo = message.sender === sessionUserId ? 'sent' : 'received';
+                            addMessageToChat(message.sender, message.message, tipo, message.sent_at);
                         });
                     } else {
                         console.error('Error:', data.message);
