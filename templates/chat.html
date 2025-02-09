@@ -193,6 +193,9 @@
     </template>
 
     <script>
+        // Obtenemos el ID del usuario de la sesión
+        const sessionUserId = "{{ session['user_id'] }}";
+
         const settingsButton = document.getElementById('settings-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
         let isOpen = false;
@@ -229,15 +232,14 @@
             messageInput.value += '😊';
         });
 
-        function addMessageToChat(nombre, contenido, tipo = 'received') {
+        function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null) {
             const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
             const template = document.getElementById(templateId).content.cloneNode(true);
             if (tipo === 'received') {
                 template.querySelector('strong').textContent = nombre;
             }
+            const timeString = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             template.querySelector('p').textContent = contenido;
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             template.querySelector('.message-time').textContent = timeString;
             const messagesContainer = document.querySelector('.messages-container');
             messagesContainer.appendChild(template);
@@ -285,6 +287,21 @@
             scrollButton.addEventListener('click', function() {
                 scrollToBottom(messagesContainer);
             });
+
+            // Cargar mensajes al cargar la página
+            fetch('/get_messages')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        data.messages.forEach(message => {
+                            const tipo = message.user_id === sessionUserId ? 'sent' : 'received';
+                            addMessageToChat(message.Nombre, message.Contenido, tipo, message.timestamp);
+                        });
+                    } else {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
         });
 
         const style = document.createElement('style');
