@@ -37,7 +37,7 @@ def login():
             session['user_id'] = user['_id']
             return redirect(url_for('chat'))
         return "Nombre de usuario o contraseña incorrectos"
-    return render_template('login.html')
+    return render_template('index.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -95,5 +95,5 @@ print(MiBaseDatos.list_collection_names())
 # MiBaseDatos.notes.insert_one({"Nombre":"Mi nota desde colab", "Contenido": "Esta es mi primera nota desde vsc"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=port, debug=True)
