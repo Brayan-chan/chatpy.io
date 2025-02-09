@@ -44,7 +44,9 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        # Encriptar la contraseña con la librería check_password_hash
         hashed_password = generate_password_hash(password)
+        # zfill(4) para que el id sea de 4 dígitos
         user_id = str(MiBaseDatos.usuarios.count_documents({}) + 1).zfill(4)
         user = {
             "_id": user_id,
@@ -65,6 +67,7 @@ def logout():
 
 @app.route('/chat')
 def chat():
+    # Si no hay un usuario logueado, redirigir al index
     if 'user_id' not in session:
         return redirect(url_for('index'))
     return render_template('chat.html')
