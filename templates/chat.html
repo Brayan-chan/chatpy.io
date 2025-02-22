@@ -236,14 +236,14 @@
                 };
                 socket.emit('send_message', data);
                 messageInput.value = '';
-                addMessageToChat(sessionUserId, message, 'sent');
             }
         });
 
-        socket.on('send_message', (data) => {
-            const { sender, message } = data;
-            if (sender === currentChatUserId || sender === sessionUserId) {
-                addMessageToChat(sender, message, 'received');
+        socket.on('new_message', (data) => {
+            const { sender, receiver, message } = data;
+            if (sender === currentChatUserId || receiver === currentChatUserId) {
+                const tipo = sender === sessionUserId ? 'sent' : 'received';
+                addMessageToChat(sender, message, tipo);
             } else {
                 alert(`Nuevo mensaje de un usuario desconocido: ${sender}`);
             }
