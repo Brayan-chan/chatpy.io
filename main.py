@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, jsonify, redirect, url_for, session
-from flask_socketio import SocketIO, join_room, leave_room, send
+from flask_socketio import SocketIO, join_room, leave_room
 from pymongo.mongo_client import MongoClient
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -62,9 +62,7 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # Encriptar la contraseña con la librería check_password_hash
         hashed_password = generate_password_hash(password)
-        # zfill(4) para que el id sea de 4 dígitos
         user_id = str(MiBaseDatos.usuarios.count_documents({}) + 1).zfill(4)
         user = {
             "_id": user_id,
@@ -85,7 +83,6 @@ def logout():
 
 @app.route('/chat')
 def chat():
-    # Si no hay un usuario logueado, redirigir al index
     if 'user_id' not in session:
         return redirect(url_for('index'))
     return render_template('chat.html')
@@ -200,13 +197,12 @@ def handle_send_message(data):
                 "read_by": []
             }
             MiBaseDatos.mensajes.insert_one(message)
-            socketio.emit('new_message', message, room=receiver)
-            socketio.emit('new_message', message, room=sender)
+            # Se han eliminado las emisiones directas para evitar duplicidad.
+            # La función watch_messages se encargará de emitir el mensaje a los clientes.
         except Exception as e:
             print(f"Error sending message: {e}")
 
 uri = os.getenv('MONGO_URI')
-
 client = MongoClient(uri)
 
 try:
@@ -217,26 +213,17 @@ except Exception as e:
 
 MiBaseDatos = client['chat']
 
-# Crear la colección 'usuarios' si no existe
 if 'usuarios' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('usuarios')
 
-# Crear la colección 'mensajes' si no existe
 if 'mensajes' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('mensajes')
 
-# Crear la colección 'contactos' si no existe
 if 'contactos' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('contactos')
 
 print(MiBaseDatos)
-
-collection = MiBaseDatos['chat']
-
 print(MiBaseDatos.list_collection_names())
-
-# Comentar la inserción manual de documentos
-# MiBaseDatos.notes.insert_one({"Nombre":"Mi nota desde colab", "Contenido": "Esta es mi primera nota desde vsc"})
 
 def watch_messages():
     with MiBaseDatos.mensajes.watch() as stream:
