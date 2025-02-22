@@ -190,7 +190,7 @@ def handle_send_message(data):
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
         message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
         try:
-            MiBaseDatos.mensajes.insert_one({
+            message = {
                 "_id": message_id,
                 "sender": sender,
                 "receiver": receiver,
@@ -198,9 +198,10 @@ def handle_send_message(data):
                 "message": message_content,
                 "sent_at": timestamp,
                 "read_by": []
-            })
-            send(data, room=receiver)
-            send(data, room=sender)  # Enviar el mensaje al remitente también
+            }
+            MiBaseDatos.mensajes.insert_one(message)
+            socketio.emit('new_message', message, room=receiver)
+            socketio.emit('new_message', message, room=sender)
         except Exception as e:
             print(f"Error sending message: {e}")
 
@@ -237,6 +238,19 @@ print(MiBaseDatos.list_collection_names())
 # Comentar la inserción manual de documentos
 # MiBaseDatos.notes.insert_one({"Nombre":"Mi nota desde colab", "Contenido": "Esta es mi primera nota desde vsc"})
 
+def watch_messages():
+    with MiBaseDatos.mensajes.watch() as stream:
+        for change in stream:
+            if change['operationType'] == 'insert':
+                message = change['fullDocument']
+                sender = message['sender']
+                receiver = message['receiver']
+                socketio.emit('new_message', message, room=receiver)
+                socketio.emit('new_message', message, room=sender)
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
+    from threading import Thread
+    watcher_thread = Thread(target=watch_messages)
+    watcher_thread.start()
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
