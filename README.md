@@ -16,21 +16,6 @@ pip install flask dotenv pymongo
 python main.py
 ```
 
-### Pasos con maquina virtual en macOS
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-
-```bash
-pip install -r requirements.txt
-```
-
-```bash
-python main.py
-```
-
 ### Pasos con maquina virtual en Windows
 
 ```bash
@@ -39,7 +24,7 @@ python -m venv venv
 ```
 
 ```bash
-pip install -r requirements.txt
+pip install flask dotenv pymongo flask_socketio pytz
 ```
 
 ```bash
