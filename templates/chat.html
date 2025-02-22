@@ -204,9 +204,21 @@
         </div>
     </template>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
+        const socket = io();
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
         // Obtenemos el ID del usuario de la sesión
         const sessionUserId = "{{ session['user_id'] }}";
+        let currentChatUserId = null;
 
         const settingsButton = document.getElementById('settings-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -215,29 +227,25 @@
         document.getElementById('send-button').addEventListener('click', function () {
             const messageInput = document.getElementById('message-input');
             const message = messageInput.value;
-            if (message.trim() !== '') {
-                fetch('/send_message', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        sender: sessionUserId,
-                        receiver: 'receiver_id', // Reemplazar con el ID del receptor
-                        type: 'private', // O 'group' si es un chat grupal
-                        message: message
-                    })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            messageInput.value = '';
-                            addMessageToChat(sessionUserId, message, 'sent');
-                        } else {
-                            console.error('Error:', data.message);
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
+            if (message.trim() !== '' && currentChatUserId) {
+                const data = {
+                    sender: sessionUserId,
+                    receiver: currentChatUserId,
+                    type: 'private',
+                    message: message
+                };
+                socket.emit('send_message', data);
+                messageInput.value = '';
+                addMessageToChat(sessionUserId, message, 'sent');
+            }
+        });
+
+        socket.on('send_message', (data) => {
+            const { sender, message } = data;
+            if (sender === currentChatUserId || sender === sessionUserId) {
+                addMessageToChat(sender, message, 'received');
+            } else {
+                alert(`Nuevo mensaje de un usuario desconocido: ${sender}`);
             }
         });
 
@@ -302,11 +310,16 @@
                 scrollToBottom(messagesContainer);
             });
 
-            // Cargar mensajes al cargar la página
-            fetch('/get_messages')
+            loadContacts();
+        });
+
+        function loadMessagesWith(contactId) {
+            fetch(`/get_messages_with/${contactId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
+                        const messagesContainer = document.querySelector('.messages-container');
+                        messagesContainer.innerHTML = '';
                         data.messages.forEach(message => {
                             const tipo = message.sender === sessionUserId ? 'sent' : 'received';
                             addMessageToChat(message.sender, message.message, tipo, message.sent_at);
@@ -316,9 +329,42 @@
                     }
                 })
                 .catch(error => console.error('Error:', error));
+        }
 
-            loadContacts();
-        });
+        function addChatItem(contact) {
+            const chatList = document.querySelector('.chat-list');
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+            chatItem.innerHTML = `
+                <div class="avatar">
+                    <img src="${contact.profile_pic}" alt="${contact.username}">
+                </div>
+                <div class="chat-name">${contact.username}</div>
+                <div class="chat-info"><span></span></div>
+                <div class="chat-time"></div>
+                <div class="unread-badge">0</div>
+            `;
+            chatItem.addEventListener('click', () => {
+                currentChatUserId = contact._id;
+                loadMessagesWith(contact._id);
+            });
+            chatList.appendChild(chatItem);
+        }
+
+        function loadContacts() {
+            fetch('/get_contacts')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        data.contacts.forEach(contact => {
+                            addChatItem(contact);
+                        });
+                    } else {
+                        console.error('Error al cargar contactos:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
 
         const style = document.createElement('style');
         style.textContent = `
@@ -367,37 +413,6 @@
                 addContactModal.style.display = 'none';
             }
         });
-
-        function addChatItem(contact) {
-            const chatList = document.querySelector('.chat-list');
-            const chatItem = document.createElement('div');
-            chatItem.className = 'chat-item';
-            chatItem.innerHTML = `
-                <div class="avatar">
-                    <img src="${contact.profile_pic}" alt="${contact.username}">
-                </div>
-                <div class="chat-name">${contact.username}</div>
-                <div class="chat-info"><span></span></div>
-                <div class="chat-time"></div>
-                <div class="unread-badge">0</div>
-            `;
-            chatList.appendChild(chatItem);
-        }
-
-        function loadContacts() {
-            fetch('/get_contacts')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        data.contacts.forEach(contact => {
-                            addChatItem(contact);
-                        });
-                    } else {
-                        console.error('Error al cargar contactos:', data.message);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        }
 
         addContactForm.addEventListener('submit', function(event) {
             event.preventDefault();
