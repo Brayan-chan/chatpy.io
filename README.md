@@ -16,17 +16,21 @@ pip install flask dotenv pymongo
 python main.py
 ```
 
-### Pasos con maquina virtual
+### Pasos con maquina virtual en Windows
 
 ```bash
 python -m venv venv
-source venv/bin/activate
+.\venv\Scripts\activate
 ```
 
 ```bash
-pip install -r requirements.txt
+pip install flask dotenv pymongo flask_socketio pytz
 ```
 
 ```bash
 python main.py
 ```
+
+### Instrucciones en local
+
+<img src="instructions.png">
