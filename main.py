@@ -276,10 +276,8 @@ def watch_messages():
                 if message.get('type') == 'group':
                     socketio.emit('new_message', message, room=message['receiver'])
                 else:
-                    sender = message['sender']
                     receiver = message['receiver']
                     socketio.emit('new_message', message, room=receiver)
-                    socketio.emit('new_message', message, room=sender)
 
 uri = os.getenv('MONGO_URI')
 client = MongoClient(uri)
