@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, jsonify, redirect, url_for, session
-from flask_socketio import SocketIO, join_room, leave_room, send
+from flask_socketio import SocketIO, join_room, leave_room
 from pymongo.mongo_client import MongoClient
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -62,9 +62,7 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # Encriptar la contraseña con la librería check_password_hash
         hashed_password = generate_password_hash(password)
-        # zfill(4) para que el id sea de 4 dígitos
         user_id = str(MiBaseDatos.usuarios.count_documents({}) + 1).zfill(4)
         user = {
             "_id": user_id,
@@ -85,7 +83,6 @@ def logout():
 
 @app.route('/chat')
 def chat():
-    # Si no hay un usuario logueado, redirigir al index
     if 'user_id' not in session:
         return redirect(url_for('index'))
     return render_template('chat.html')
@@ -114,6 +111,18 @@ def get_messages_with(contact_id):
             {"sender": contact_id, "receiver": user_id}
         ]
     }))
+    for message in messages:
+        message['_id'] = str(message['_id'])
+        utc_time = datetime.fromisoformat(message['sent_at'])
+        local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+    return jsonify({"status": "success", "messages": messages}), 200
+
+@app.route('/get_group_messages/<group_id>', methods=['GET'])
+def get_group_messages(group_id):
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    messages = list(MiBaseDatos.mensajes.find({"receiver": group_id, "type": "group"}))
     for message in messages:
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
@@ -166,12 +175,68 @@ def get_contacts():
         return jsonify({"status": "success", "contacts": contacts}), 200
     return jsonify({"status": "success", "contacts": []}), 200
 
+@app.route('/get_groups', methods=['GET'])
+def get_groups():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = session['user_id']
+    groups = list(MiBaseDatos.grupos.find({"members": user_id}))
+    for group in groups:
+        group['_id'] = str(group['_id'])
+    return jsonify({"status": "success", "groups": groups}), 200
+
+@app.route('/create_group', methods=['POST'])
+def create_group():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    group_name = data.get('group_name')
+    members = data.get('members', [])
+    admins = data.get('admins', [])
+    if not group_name:
+        return jsonify({"status": "error", "message": "Se requiere el nombre del grupo"}), 400
+
+    creator = session['user_id']
+    if creator not in members:
+        members.append(creator)
+    if creator not in admins:
+        admins.append(creator)
+    for admin in admins:
+        if admin not in members:
+            members.append(admin)
+            
+    timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
+    group_id = str(MiBaseDatos.grupos.count_documents({}) + 1).zfill(4)
+    group = {
+        "_id": group_id,
+        "group_name": group_name,
+        "members": members,
+        "admins": admins,
+        "created_by": creator,
+        "created_at": timestamp
+    }
+    try:
+        MiBaseDatos.grupos.insert_one(group)
+        # Notificar a cada miembro conectado para que el grupo aparezca en su lista
+        for member in members:
+            socketio.emit('new_group', group, room=member)
+        return jsonify({"status": "success", "group": group}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @socketio.on('connect')
 def handle_connect():
     if 'user_id' in session:
         user_id = session['user_id']
         join_room(user_id)
-        print(f"User {user_id} connected and joined room {user_id}")
+        # Unirse a las rooms de cada grupo en que es miembro
+        groups = list(MiBaseDatos.grupos.find({"members": user_id}))
+        for group in groups:
+            join_room(group['_id'])
+        # Emitir la lista de grupos al usuario conectado
+        groups_data = [{"_id": str(group['_id']), "group_name": group['group_name']} for group in groups]
+        socketio.emit('group_list', {"groups": groups_data}, room=user_id)
+        print(f"User {user_id} connected and joined personal and group rooms")
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -190,7 +255,7 @@ def handle_send_message(data):
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
         message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
         try:
-            MiBaseDatos.mensajes.insert_one({
+            message = {
                 "_id": message_id,
                 "sender": sender,
                 "receiver": receiver,
@@ -198,14 +263,25 @@ def handle_send_message(data):
                 "message": message_content,
                 "sent_at": timestamp,
                 "read_by": []
-            })
-            send(data, room=receiver)
-            send(data, room=sender)  # Enviar el mensaje al remitente también
+            }
+            MiBaseDatos.mensajes.insert_one(message)
         except Exception as e:
             print(f"Error sending message: {e}")
 
-uri = os.getenv('MONGO_URI')
+def watch_messages():
+    with MiBaseDatos.mensajes.watch() as stream:
+        for change in stream:
+            if change['operationType'] == 'insert':
+                message = change['fullDocument']
+                if message.get('type') == 'group':
+                    socketio.emit('new_message', message, room=message['receiver'])
+                else:
+                    sender = message['sender']
+                    receiver = message['receiver']
+                    socketio.emit('new_message', message, room=receiver)
+                    socketio.emit('new_message', message, room=sender)
 
+uri = os.getenv('MONGO_URI')
 client = MongoClient(uri)
 
 try:
@@ -216,27 +292,24 @@ except Exception as e:
 
 MiBaseDatos = client['chat']
 
-# Crear la colección 'usuarios' si no existe
 if 'usuarios' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('usuarios')
 
-# Crear la colección 'mensajes' si no existe
 if 'mensajes' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('mensajes')
 
-# Crear la colección 'contactos' si no existe
 if 'contactos' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('contactos')
 
+if 'grupos' not in MiBaseDatos.list_collection_names():
+    MiBaseDatos.create_collection('grupos')
+
 print(MiBaseDatos)
-
-collection = MiBaseDatos['chat']
-
 print(MiBaseDatos.list_collection_names())
 
-# Comentar la inserción manual de documentos
-# MiBaseDatos.notes.insert_one({"Nombre":"Mi nota desde colab", "Contenido": "Esta es mi primera nota desde vsc"})
-
 if __name__ == '__main__':
+    from threading import Thread
     port = int(os.environ.get('PORT', 3000))
+    watcher_thread = Thread(target=watch_messages)
+    watcher_thread.start()
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
