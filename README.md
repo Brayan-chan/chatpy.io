@@ -31,6 +31,17 @@ pip install flask dotenv pymongo flask_socketio pytz
 python main.py
 ```
 
+### Pasos con maquina virtual en Linux
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+```bash
+pip install flask dotenv pymongo flask_socketio pytz
+```
+
 ### Instrucciones en local
 
 <img src="instructions.png">
