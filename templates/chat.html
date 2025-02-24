@@ -9,6 +9,22 @@
   <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
   <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+
+  <style>
+    #emoji-picker-container {
+      position: absolute;
+      bottom: 70px;
+      left: 500px;
+      z-index: 1000;
+      display: none;
+    }
+  
+    emoji-picker {
+      width: 300px;
+      height: 400px;
+    }
+  </style>
 </head>
 <body>
   <div class="chat-container">
@@ -109,6 +125,10 @@
         <button class="action-button" id="mic-button">
           <i class="fas fa-microphone"></i>
         </button>
+      </div>
+
+      <div id="emoji-picker-container">
+        <emoji-picker></emoji-picker>
       </div>
     </main>
   </div>
@@ -233,9 +253,30 @@
       }
     });
 
-    document.getElementById('emoji-button').addEventListener('click', function () {
-      const messageInput = document.getElementById('message-input');
-      messageInput.value += '😊';
+    const emojiButton = document.getElementById('emoji-button');
+  const emojiPickerContainer = document.getElementById('emoji-picker-container');
+  const messageInput = document.getElementById('message-input');
+  let isEmojiPickerVisible = false;
+
+  emojiButton.addEventListener('click', () => {
+    isEmojiPickerVisible = !isEmojiPickerVisible;
+    emojiPickerContainer.style.display = isEmojiPickerVisible ? 'block' : 'none';
+  });
+
+  // Cerrar emoji picker si se hace click fuera de él
+  document.addEventListener('click', (e) => {
+    if (!emojiButton.contains(e.target) && 
+        !emojiPickerContainer.contains(e.target)) {
+      emojiPickerContainer.style.display = 'none';
+      isEmojiPickerVisible = false;
+    }
+  });
+
+  // Selector de emoji
+  document.querySelector('emoji-picker')
+    .addEventListener('emoji-click', event => {
+      messageInput.value += event.detail.unicode;
+      messageInput.focus();
     });
 
     function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null) {
