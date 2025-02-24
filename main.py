@@ -85,7 +85,8 @@ def logout():
 def chat():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    return render_template('chat.html')
+    user = MiBaseDatos.usuarios.find_one({"_id": session['user_id']})
+    return render_template('chat.html', user=user)
 
 @app.route('/get_messages', methods=['GET'])
 def get_messages():
@@ -223,6 +224,26 @@ def create_group():
         return jsonify({"status": "success", "group": group}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/update_avatar', methods=['POST'])
+def update_avatar():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    avatar_url = data.get('avatar_url')
+    if avatar_url:
+        try:
+            result = MiBaseDatos.usuarios.update_one(
+                {"_id": session['user_id']},
+                {"$set": {"profile_pic": avatar_url}}
+            )
+            if result.modified_count == 1:
+                return jsonify({"status": "success"}), 200
+            else:
+                return jsonify({"status": "error", "message": "No se pudo actualizar el avatar"}), 500
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Invalid data"}), 400
 
 @socketio.on('connect')
 def handle_connect():
