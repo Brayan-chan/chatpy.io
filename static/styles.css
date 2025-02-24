@@ -491,3 +491,16 @@ body {
     text-decoration: none;
     cursor: pointer;
 }
+
+#emoji-picker-container {
+    position: absolute;
+    bottom: 70px;
+    left: 500px;
+    z-index: 1000;
+    display: none;
+  }
+
+  #emoji-picker {
+    width: 300px;
+    height: 400px;
+  }
