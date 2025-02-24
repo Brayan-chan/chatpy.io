@@ -10,21 +10,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
-
-  <style>
-    #emoji-picker-container {
-      position: absolute;
-      bottom: 70px;
-      left: 500px;
-      z-index: 1000;
-      display: none;
-    }
-  
-    emoji-picker {
-      width: 300px;
-      height: 400px;
-    }
-  </style>
+  <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
 </head>
 <body>
   <div class="chat-container">
@@ -47,8 +33,11 @@
             </a>
           </div>
         </div>
+        <!-- Este div sirve para cargar y mostrar la imagen del usuario -->
         <div class="user-avatar">
-          <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/461338513_543649241643596_1140871026957553677_n.jpg?ccb=11-4&oh=01_Q5AaIDUIt2ARpZvXBf1kgVemO0mwXtykj8ZxR0YDgFMIlL_S&oe=67AC9A42&_nc_sid=5e03e0&_nc_cat=108" alt="Tú">
+          <a id="upload-avatar-link" class="action-button" href="javascript:void(0);">
+            <img id="user-avatar-img" src="{{ user.profile_pic }}" alt="Tú">
+          </a>
         </div>
       </div>
     </nav>
@@ -668,6 +657,46 @@
       }
     `;
     document.head.appendChild(style);
+
+    //Configuración de Cloudinary
+    const CLOUDINARY_CLOUD_NAME = 'dmyejrbs7';
+    const CLOUDINARY_UPLOAD_PRESET = 'apuntes';
+
+    document.getElementById('upload-avatar-link').addEventListener('click', function () {
+      cloudinary.openUploadWidget({
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ['local', 'url', 'camera'],
+        multiple: false,
+        cropping: true,
+        croppingAspectRatio: 1,
+        showSkipCropButton: false,
+        maxImageFileSize: 2000000, // 2MB
+        maxImageWidth: 1000,
+        maxImageHeight: 1000,
+        clientAllowedFormats: ["jpg", "jpeg", "png"]
+      }, (error, result) => {
+        if (!error && result && result.event === "success") {
+          const imageUrl = result.info.secure_url;
+          fetch('/update_avatar', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ avatar_url: imageUrl })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              document.getElementById('user-avatar-img').src = imageUrl;
+            } else {
+              alert('Error al actualizar el avatar: ' + data.message);
+            }
+          })
+          .catch(error => console.error('Error:', error));
+        }
+      });
+    });
   </script>
 </body>
 </html>
