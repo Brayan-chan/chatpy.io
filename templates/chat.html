@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
 </head>
+
 <body>
   <div class="chat-container">
     <nav class="nav-sidebar">
@@ -77,7 +79,9 @@
       <header class="chat-header">
         <div class="header-left">
           <div class="avatar">
-            <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111" alt="Chat">
+            <img
+              src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111"
+              alt="Chat">
           </div>
           <div>
             <h2 id="chat-title">Chats</h2>
@@ -194,7 +198,7 @@
     let isOpen = false;
 
     // Enviar mensaje (según currentChatType)
-    document.getElementById('send-button').addEventListener('click', function () {
+    function messageSend() {
       const messageInput = document.getElementById('message-input');
       const message = messageInput.value;
       if (message.trim() !== '' && currentChatUserId) {
@@ -206,6 +210,17 @@
         };
         socket.emit('send_message', data);
         messageInput.value = '';
+      }
+    };
+
+    // Evento al hacer clic en el botón Enviar
+    document.getElementById('send-button').addEventListener("click", messageSend);
+
+    // Evento al presionar la tecla Enter en el campo de mensaje
+    document.getElementById('message-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { // Enter sin Shift
+        e.preventDefault(); // Evita el salto de línea o el envío del formulario
+        messageSend(); // Llama a la función para enviar el mensaje
       }
     });
 
@@ -243,30 +258,30 @@
     });
 
     const emojiButton = document.getElementById('emoji-button');
-  const emojiPickerContainer = document.getElementById('emoji-picker-container');
-  const messageInput = document.getElementById('message-input');
-  let isEmojiPickerVisible = false;
+    const emojiPickerContainer = document.getElementById('emoji-picker-container');
+    const messageInput = document.getElementById('message-input');
+    let isEmojiPickerVisible = false;
 
-  emojiButton.addEventListener('click', () => {
-    isEmojiPickerVisible = !isEmojiPickerVisible;
-    emojiPickerContainer.style.display = isEmojiPickerVisible ? 'block' : 'none';
-  });
-
-  // Cerrar emoji picker si se hace click fuera de él
-  document.addEventListener('click', (e) => {
-    if (!emojiButton.contains(e.target) && 
-        !emojiPickerContainer.contains(e.target)) {
-      emojiPickerContainer.style.display = 'none';
-      isEmojiPickerVisible = false;
-    }
-  });
-
-  // Selector de emoji
-  document.querySelector('emoji-picker')
-    .addEventListener('emoji-click', event => {
-      messageInput.value += event.detail.unicode;
-      messageInput.focus();
+    emojiButton.addEventListener('click', () => {
+      isEmojiPickerVisible = !isEmojiPickerVisible;
+      emojiPickerContainer.style.display = isEmojiPickerVisible ? 'block' : 'none';
     });
+
+    // Cerrar emoji picker si se hace click fuera de él
+    document.addEventListener('click', (e) => {
+      if (!emojiButton.contains(e.target) &&
+        !emojiPickerContainer.contains(e.target)) {
+        emojiPickerContainer.style.display = 'none';
+        isEmojiPickerVisible = false;
+      }
+    });
+
+    // Selector de emoji
+    document.querySelector('emoji-picker')
+      .addEventListener('emoji-click', event => {
+        messageInput.value += event.detail.unicode;
+        messageInput.focus();
+      });
 
     function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null) {
       const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
@@ -685,18 +700,19 @@
             },
             body: JSON.stringify({ avatar_url: imageUrl })
           })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              document.getElementById('user-avatar-img').src = imageUrl;
-            } else {
-              alert('Error al actualizar el avatar: ' + data.message);
-            }
-          })
-          .catch(error => console.error('Error:', error));
+            .then(response => response.json())
+            .then(data => {
+              if (data.status === 'success') {
+                document.getElementById('user-avatar-img').src = imageUrl;
+              } else {
+                alert('Error al actualizar el avatar: ' + data.message);
+              }
+            })
+            .catch(error => console.error('Error:', error));
         }
       });
     });
   </script>
 </body>
+
 </html>
