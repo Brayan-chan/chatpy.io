@@ -9,7 +9,7 @@ Chatpy.io es un chat web que funcionara con socket.io, utilizando el paquete [so
 ### Iniciar el servidor
 
 ```bash
-pip install flask dotenv pymongo
+pip install flask dotenv pymongo flask_socketio pytz
 ```
 
 ```bash
