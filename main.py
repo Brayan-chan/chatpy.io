@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
 from pytz import timezone
+from bson import ObjectId
 
 load_dotenv('.env')
 app = Flask(__name__)
@@ -63,7 +64,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
         hashed_password = generate_password_hash(password)
-        user_id = str(MiBaseDatos.usuarios.count_documents({}) + 1).zfill(4)
+        user_id = str(ObjectId())  # Generar un ObjectId único
         user = {
             "_id": user_id,
             "username": username,
