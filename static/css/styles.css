@@ -468,7 +468,7 @@ body {
 }
 
 .modal-content {
-    background-color: #2a2a2a;
+    background-color: #2a2a2a !important; 
     margin: 15% auto;
     padding: 20px;
     border: 1px solid #444;
@@ -478,8 +478,28 @@ body {
     text-align: center;
 }
 
+#contact-username, #group-name  {
+    margin-top: 10px;
+    color: #056162;
+    padding: 5px;
+    border-radius: 10px;
+}
+
+#add-contact-submit, #add-group-submit {
+    margin: 10px;
+    background-color: #056162;
+    padding: 5px;
+    border-radius: 10px;
+}
+
+#add-contact-submit:hover, #add-group-submit:hover {
+    background-color: #0a7373;
+    transform: scale(0.95);
+    transition: 0.5s;
+}
+
 .close-button {
-    color: #aaa;
+    color: #aaa !important;
     float: right;
     font-size: 28px;
     font-weight: bold;
@@ -487,7 +507,7 @@ body {
 
 .close-button:hover,
 .close-button:focus {
-    color: #000;
+    color: #b54040 !important;
     text-decoration: none;
     cursor: pointer;
 }

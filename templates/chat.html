@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
   <title>chatpy.io</title>
-  <link rel="stylesheet" href="../static/styles.css">
+  <link rel="stylesheet" href="../static/css/styles.css">
   <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
   <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
@@ -80,9 +80,7 @@
       <header class="chat-header">
         <div class="header-left">
           <div class="avatar">
-            <img
-              src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111"
-              alt="Chat">
+            <img src="" alt="Chat">
           </div>
           <div>
             <h2 id="chat-title">Chats</h2>
@@ -91,7 +89,7 @@
         </div>
         <div class="header-right">
           <!-- Botón para el videochat-->
-          <button onclick="location.href = 'https://videochat1-hazel.vercel.app/';" class="action-button">
+          <button onclick="location.href = '/videochat';" class="action-button">
             <i class="fas fa-video"></i>
           </button>
           <button class="action-button">
@@ -138,7 +136,7 @@
       <h2>Agregar Contacto</h2>
       <form id="add-contact-form">
         <input type="text" id="contact-username" placeholder="Nombre de usuario" required>
-        <button type="submit">Agregar</button>
+        <button id="add-contact-submit" type="submit">Agregar</button>
       </form>
     </div>
   </div>
@@ -158,11 +156,12 @@
         <div id="group-admins-list">
           <!-- Se cargarán los checkboxes de contactos para admin -->
         </div>
-        <button type="submit">Crear Grupo</button>
+        <button id="add-group-submit" type="submit">Crear Grupo</button>
       </form>
     </div>
   </div>
 
+  <!-- Template para enviar mensajes -->
   <template id="message-template-sent">
     <div class="message sent">
       <p></p>
@@ -170,6 +169,7 @@
     </div>
   </template>
 
+  <!-- Template para recibir mensajes -->
   <template id="message-template-received">
     <div class="message-group">
       <div class="avatar"></div>
@@ -183,6 +183,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script>
+
     const socket = io();
 
     socket.on('connect', () => {
