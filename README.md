@@ -4,33 +4,54 @@ Chatpy.io es un chat web que funcionara con socket.io, utilizando el paquete [so
 
 ### Prueba de conexión a MongoDB
 
-<img src="conection.jpeg">
+<img src="Anexos/conection.jpeg">
 
-### Iniciar el servidor
-
-```bash
-pip install flask dotenv pymongo flask_socketio pytz
-```
-
-```bash
-python main.py
-```
-
-### Pasos con maquina virtual en Windows
+## Crear entorno virtual para Windows
 
 ```bash
 python -m venv venv
-.\venv\Scripts\activate
+````
+
+## Iniciarlizar el entorno virtual
+
+```
+.venv\Scripts\activate
 ```
 
+## Crear entorno virtual para Linux y Mac
+
 ```bash
-pip install flask dotenv pymongo flask_socketio pytz
+python3 -m venv venv
+````
+
+## Iniciarlizar el entorno virtual para Linux y Mac
+
 ```
+.venv/bin/activate
+```
+
+## Instalar las dependecias
+
+- Primera forma
+
+```bash
+pip install flask dotenv pymongo flask-socketio pytz
+```
+
+- Segunda forma
+
+```bash
+pip install -r requirements.txt
+```
+
+## Ejecutar el proyecto en Windows
 
 ```bash
 python main.py
 ```
 
-### Instrucciones en local
+## Ejecutar el proyecto en Linux y Mac
 
-<img src="instructions.png">
+```bash
+python3 main.py
+```
