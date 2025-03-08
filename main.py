@@ -89,6 +89,17 @@ def chat():
     user = MiBaseDatos.usuarios.find_one({"_id": session['user_id']})
     return render_template('chat.html', user=user)
 
+@app.route('/videochat')
+def videochat():
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+    user = MiBaseDatos.usuarios.find_one({"_id": session['user_id']})
+    contact = request.args.get('contact')
+    if contact:
+        contact_user = MiBaseDatos.usuarios.find_one({"_id": contact})
+        return render_template('videochat.html', user=user, contact_user=contact_user)
+    return render_template('videochat.html', user=user)
+
 @app.route('/get_messages', methods=['GET'])
 def get_messages():
     if 'user_id' not in session:
