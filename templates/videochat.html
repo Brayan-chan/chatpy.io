@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,97 +10,69 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.8.1/flowbite.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../static/css/videochat.css">
+    <style>
+        .waiting-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+        }
+
+        .waiting-screen h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .waiting-screen p {
+            margin-bottom: 1rem;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
+
 <body class="dark-mode light-mode min-h-screen p-4">
     <div class="container mx-auto max-w-4xl">
         <h1 class="text-2xl md:text-3xl font-bold text-center mb-6">WebRTC Video Chat</h1>
-        
-        <div id="step1" class="card mb-6">
-            <h2 class="text-xl font-semibold mb-4">Paso 1: Configurar tu conexión</h2>
-            <div class="mb-4">
-                <label for="username" class="block mb-2 text-sm font-medium">Tu nombre de usuario</label>
-                <input type="text" id="username" class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Ingresa un nombre único" required>
-            </div>
-            <button id="generateBtn" class="btn-primary px-5 py-2.5 rounded-lg text-center mr-2">
-                Generar ID
+
+        <!-- Pantalla de espera -->
+        <div id="waitingScreen" class="waiting-screen">
+            <div class="spinner"></div>
+            <h2>Preparando videollamada</h2>
+            <p id="waitingMessage">Configurando tu cámara y micrófono...</p>
+            <button id="cancelCallBtn" class="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                Cancelar llamada
             </button>
         </div>
-        
-        <div id="audioTestPanel" class="card mb-6 hidden">
-            <h2 class="text-xl font-semibold mb-4">Prueba de audio y video</h2>
-            
-            <div class="test-video-container">
-                <video id="testVideo" class="test-video" autoplay playsinline muted></video>
-            </div>
-            
-            <div class="media-status">
-                <div class="media-status-item">
-                    <div class="media-status-indicator media-status-pending" id="camStatus"></div>
-                    <span>Cámara</span>
-                </div>
-                <div class="media-status-item">
-                    <div class="media-status-indicator media-status-pending" id="micStatus"></div>
-                    <span>Micrófono</span>
-                </div>
-            </div>
-            
-            <div class="audio-test-container">
-                <div class="audio-test-status">
-                    <div>
-                        <span class="audio-indicator audio-inactive" id="audioIndicator"></span>
-                        <span id="audioStatusText">Sin audio detectado</span>
-                    </div>
-                    <span id="audioLevel">0%</span>
-                </div>
-                
-                <div class="audio-meter">
-                    <div class="audio-meter-fill" id="audioMeterFill"></div>
-                    <div class="audio-meter-tick" style="left: 30%"></div>
-                    <div class="audio-meter-tick" style="left: 60%"></div>
-                    <div class="audio-meter-tick" style="left: 90%"></div>
-                </div>
-                
-                <p class="text-sm mt-2 mb-4">Habla por tu micrófono para comprobar que funciona correctamente. La barra debe moverse al detectar tu voz.</p>
-                
-                <div class="flex space-x-2">
-                    <button id="testAudioBtn" class="btn-primary px-5 py-2.5 rounded-lg text-center">
-                        <i class="fas fa-volume-up mr-2"></i>
-                        Probar audio
-                    </button>
-                    <button id="continueBtn" class="btn-primary px-5 py-2.5 rounded-lg text-center">
-                        Continuar
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="myIdContainer" class="card mb-6 hidden">
-            <h2 class="text-xl font-semibold mb-4">Tu ID de conexión</h2>
-            <p class="text-sm mb-2">Comparte este ID con quien quieras llamar:</p>
-            <div class="flex">
-                <input type="text" id="peerId" class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg rounded-r-none focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" readonly>
-                <button id="copyBtn" class="btn-primary px-3 py-2.5 rounded-r-lg text-center">
-                    Copiar
-                </button>
-            </div>
-            <div class="mt-4 flex items-center">
-                <span class="status-indicator status-disconnected" id="connectionStatus"></span>
-                <span id="connectionText">Desconectado</span>
-            </div>
-        </div>
-        
-        <div id="step2" class="card mb-6 hidden">
-            <h2 class="text-xl font-semibold mb-4">Paso 2: Conectar con otro usuario</h2>
-            <div class="mb-4">
-                <label for="remotePeerId" class="block mb-2 text-sm font-medium">ID del otro usuario</label>
-                <input type="text" id="remotePeerId" class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Pega el ID del otro usuario">
-            </div>
-            <button id="connectBtn" class="btn-primary px-5 py-2.5 rounded-lg text-center">
-                Conectar
-            </button>
-        </div>
-        
-        <div id="step3" class="hidden">
+
+        <!-- Contenedor de video chat -->
+        <div id="videoChatContainer" class="hidden">
             <div class="card mb-6">
                 <h2 class="text-xl font-semibold mb-4">Video Chat</h2>
                 <div class="video-container">
@@ -107,11 +80,11 @@
                     <div class="local-video-container">
                         <video id="localVideo" class="local-video" autoplay playsinline muted></video>
                     </div>
-                    
+
                     <button id="toggleChatBtn" class="toggle-chat-btn">
                         <i class="fas fa-comment"></i>
                     </button>
-                    
+
                     <div class="reaction-bar">
                         <button class="reaction-btn" data-emoji="👍">👍</button>
                         <button class="reaction-btn" data-emoji="👏">👏</button>
@@ -119,7 +92,7 @@
                         <button class="reaction-btn" data-emoji="😂">😂</button>
                         <button class="reaction-btn" data-emoji="😮">😮</button>
                     </div>
-                    
+
                     <div id="chatPanel" class="chat-panel">
                         <div class="chat-header">
                             <h3 class="font-semibold">Chat</h3>
@@ -130,7 +103,8 @@
                         <div class="chat-body">
                             <div id="chatMessages" class="chat-messages"></div>
                             <div class="chat-input-container">
-                                <input type="text" id="chatInput" placeholder="Escribe un mensaje..." class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                                <input type="text" id="chatInput" placeholder="Escribe un mensaje..."
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
                                 <button id="sendMessageBtn" class="btn-primary px-3 py-2.5 rounded-lg text-center ml-2">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
@@ -174,7 +148,7 @@
                         <span class="ml-2">Colgar</span>
                     </button>
                 </div>
-                
+
                 <div class="debug-panel">
                     <div class="debug-title">
                         <span>Diagnóstico de conexión</span>
@@ -186,60 +160,35 @@
                 </div>
             </div>
         </div>
-        
-        <div id="errorContainer" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mt-4 mb-4" role="alert">
+
+        <div id="errorContainer"
+            class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mt-4 mb-4" role="alert">
             <strong class="font-bold">Error: </strong>
             <span id="errorMessage"></span>
         </div>
     </div>
 
     <script>
-        function checkWebRTCSupport() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showError('Tu navegador no soporta WebRTC. Por favor, actualiza tu navegador o prueba con otro como Chrome, Firefox o Edge.');
-                return false;
-            }
-            return true;
-        }
-        
-        const generateBtn = document.getElementById('generateBtn');
-        const connectBtn = document.getElementById('connectBtn');
+        // Variables globales
+        const waitingScreen = document.getElementById('waitingScreen');
+        const waitingMessage = document.getElementById('waitingMessage');
+        const videoChatContainer = document.getElementById('videoChatContainer');
+        const cancelCallBtn = document.getElementById('cancelCallBtn');
         const hangupBtn = document.getElementById('hangupBtn');
         const reconnectBtn = document.getElementById('reconnectBtn');
         const toggleAudioBtn = document.getElementById('toggleAudioBtn');
         const toggleVideoBtn = document.getElementById('toggleVideoBtn');
-        const copyBtn = document.getElementById('copyBtn');
-        const testAudioBtn = document.getElementById('testAudioBtn');
-        const continueBtn = document.getElementById('continueBtn');
-        const toggleDebugBtn = document.getElementById('toggleDebugBtn');
-        const username = document.getElementById('username');
-        const peerId = document.getElementById('peerId');
-        const remotePeerId = document.getElementById('remotePeerId');
         const localVideo = document.getElementById('localVideo');
         const remoteVideo = document.getElementById('remoteVideo');
-        const testVideo = document.getElementById('testVideo');
-        const step1 = document.getElementById('step1');
-        const step2 = document.getElementById('step2');
-        const step3 = document.getElementById('step3');
-        const audioTestPanel = document.getElementById('audioTestPanel');
-        const myIdContainer = document.getElementById('myIdContainer');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const connectionText = document.getElementById('connectionText');
+        const toggleDebugBtn = document.getElementById('toggleDebugBtn');
         const errorContainer = document.getElementById('errorContainer');
         const errorMessage = document.getElementById('errorMessage');
-        const audioMeterFill = document.getElementById('audioMeterFill');
-        const audioIndicator = document.getElementById('audioIndicator');
-        const audioStatusText = document.getElementById('audioStatusText');
-        const audioLevel = document.getElementById('audioLevel');
-        const camStatus = document.getElementById('camStatus');
-        const micStatus = document.getElementById('micStatus');
         const debugContent = document.getElementById('debugContent');
         const debugLogs = document.getElementById('debugLogs');
         const localAudioStatus = document.getElementById('localAudioStatus').querySelector('.media-status-indicator');
         const localVideoStatus = document.getElementById('localVideoStatus').querySelector('.media-status-indicator');
         const remoteAudioStatus = document.getElementById('remoteAudioStatus').querySelector('.media-status-indicator');
         const remoteVideoStatus = document.getElementById('remoteVideoStatus').querySelector('.media-status-indicator');
-
         const toggleChatBtn = document.getElementById('toggleChatBtn');
         const chatPanel = document.getElementById('chatPanel');
         const closeChatBtn = document.getElementById('closeChatBtn');
@@ -247,39 +196,23 @@
         const chatInput = document.getElementById('chatInput');
         const sendMessageBtn = document.getElementById('sendMessageBtn');
         const reactionBtns = document.querySelectorAll('.reaction-btn');
-        
+
         let peer;
         let localStream;
         let currentCall;
         let dataConnection;
         let audioEnabled = true;
         let videoEnabled = true;
-        let localUserName = '';
+        let localUserName = "{{ user.username }}";
         let remote_id = '';
+        let roomId = '';
         let connectionRetries = 0;
-        let maxRetries = 3;
+        let maxRetries = 5;
+        let connectionTimeout;
+        let isConnecting = false;
+        let checkOtherPeerInterval;
 
-        let audioContext;
-        let analyser;
-        let microphone;
-        let testAudioStream;
-        let audioTestInterval;
-        let audioTestActive = false;
-        
-        let testAudio = new Audio('https://cdn.jsdelivr.net/gh/anars/blank-audio/250-milliseconds-of-silence.mp3');
-        testAudio.loop = true;
-        
-        function addDebugLog(message, type = 'info') {
-            const logElement = document.createElement('div');
-            logElement.classList.add('debug-log', `debug-log-${type}`);
-            logElement.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
-            debugLogs.appendChild(logElement);
-            
-            debugLogs.scrollTop = debugLogs.scrollHeight;
-
-            console.log(`${type.toUpperCase()}: ${message}`);
-        }
-        
+        // Función para mostrar mensajes de error
         function showError(message) {
             errorMessage.textContent = message;
             errorContainer.classList.remove('hidden');
@@ -288,31 +221,49 @@
                 errorContainer.classList.add('hidden');
             }, 5000);
         }
-        
+
+        // Función para agregar logs de depuración
+        function addDebugLog(message, type = 'info') {
+            const logElement = document.createElement('div');
+            logElement.classList.add('debug-log', `debug-log-${type}`);
+            logElement.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            debugLogs.appendChild(logElement);
+
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+
+        // Función para actualizar el estado de conexión
         function updateConnectionStatus(status) {
-            connectionStatus.classList.remove('status-disconnected', 'status-connected', 'status-connecting');
+            addDebugLog(`Estado de conexión actualizado a: ${status}`);
             
             switch (status) {
-                case 'disconnected':
-                    connectionStatus.classList.add('status-disconnected');
-                    connectionText.textContent = 'Desconectado';
-                    break;
-                case 'connected':
-                    connectionStatus.classList.add('status-connected');
-                    connectionText.textContent = 'Conectado';
+                case 'waiting':
+                    waitingMessage.textContent = 'Esperando a que el otro usuario se conecte...';
+                    document.getElementById('waitingScreen').style.display = 'flex';
+                    document.getElementById('videoChatContainer').style.display = 'none';
                     break;
                 case 'connecting':
-                    connectionStatus.classList.add('status-connecting');
-                    connectionText.textContent = 'Conectando...';
+                    waitingMessage.textContent = 'Conectando con el otro usuario...';
+                    document.getElementById('waitingScreen').style.display = 'flex';
+                    document.getElementById('videoChatContainer').style.display = 'none';
+                    break;
+                case 'connected':
+                    document.getElementById('waitingScreen').style.display = 'none';
+                    document.getElementById('videoChatContainer').style.display = 'block';
+                    break;
+                case 'failed':
+                    waitingMessage.textContent = 'Error de conexión. Intentando reconectar...';
+                    document.getElementById('waitingScreen').style.display = 'flex';
+                    document.getElementById('videoChatContainer').style.display = 'none';
                     break;
             }
-            
-            addDebugLog(`Estado de conexión: ${status}`);
         }
-        
+
+        // Función para actualizar el estado de los medios
         function updateMediaStatus(type, status) {
             let indicator;
-            
+
             switch (type) {
                 case 'localAudio':
                     indicator = localAudioStatus;
@@ -326,145 +277,98 @@
                 case 'remoteVideo':
                     indicator = remoteVideoStatus;
                     break;
-                case 'camera':
-                    indicator = camStatus;
-                    break;
-                case 'microphone':
-                    indicator = micStatus;
-                    break;
             }
-            
+
             if (indicator) {
                 indicator.classList.remove('media-status-active', 'media-status-inactive', 'media-status-pending');
                 indicator.classList.add(`media-status-${status}`);
-                
+
                 addDebugLog(`Estado de ${type}: ${status}`);
             }
         }
-        
-        function initializeAudioTest(stream) {
-            if (audioTestActive) return;
-            
-            audioTestActive = true;
-            
-            testVideo.srcObject = stream;
-            testAudioStream = stream;
-   
-            let videoTracks = stream.getVideoTracks();
-            let audioTracks = stream.getAudioTracks();
-            
-            if (videoTracks.length > 0) {
-                updateMediaStatus('camera', 'active');
-                addDebugLog('Cámara detectada y activa', 'success');
-            } else {
-                updateMediaStatus('camera', 'inactive');
-                addDebugLog('No se detectó cámara', 'error');
-            }
-            
-            if (audioTracks.length > 0) {
-                updateMediaStatus('microphone', 'active');
-                addDebugLog('Micrófono detectado', 'success');
-            } else {
-                updateMediaStatus('microphone', 'inactive');
-                addDebugLog('No se detectó micrófono', 'error');
-            }
 
+        // Función para verificar soporte de WebRTC
+        function checkWebRTCSupport() {
+            const isWebRTCSupported =
+                navigator.mediaDevices !== undefined &&
+                navigator.mediaDevices.getUserMedia !== undefined &&
+                window.RTCPeerConnection !== undefined;
+
+            if (!isWebRTCSupported) {
+                showError('Tu navegador no soporta WebRTC. Por favor, actualiza tu navegador o prueba con otro como Chrome, Firefox o Edge.');
+                return false;
+            }
+            return true;
+        }
+
+        // Función para configurar el stream de medios
+        async function setupMediaStream() {
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
+                addDebugLog('Solicitando acceso a cámara y micrófono', 'info');
 
-                microphone = audioContext.createMediaStreamSource(stream);
-                microphone.connect(analyser);
-                
-                analyser.fftSize = 256;
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-     
-                audioTestInterval = setInterval(() => {
-                    analyser.getByteFrequencyData(dataArray);
-
-                    let sum = 0;
-                    for (let i = 0; i < bufferLength; i++) {
-                        sum += dataArray[i];
+                const constraints = {
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    },
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
                     }
-                    
-                    const average = sum / bufferLength;
-                    const volumePercent = Math.min(100, Math.round((average / 128) * 100));
+                };
 
-                    audioMeterFill.style.width = `${volumePercent}%`;
-                    audioLevel.textContent = `${volumePercent}%`;
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    addDebugLog('Acceso a cámara y micrófono concedido', 'success');
+                    updateMediaStatus('localAudio', 'active');
+                    updateMediaStatus('localVideo', 'active');
+                } catch (mediaError) {
+                    console.error('Error al acceder a cámara y micrófono:', mediaError);
+                    addDebugLog(`Error al acceder a medios: ${mediaError.message}`, 'warning');
 
-                    if (volumePercent > 5) {
-                        audioIndicator.classList.remove('audio-inactive');
-                        audioIndicator.classList.add('audio-active');
-                        audioStatusText.textContent = 'Audio detectado';
-                    } else {
-                        audioIndicator.classList.remove('audio-active');
-                        audioIndicator.classList.add('audio-inactive');
-                        audioStatusText.textContent = 'Sin audio detectado';
+                    // Intentar solo con audio
+                    try {
+                        const audioOnlyConstraints = {
+                            audio: {
+                                echoCancellation: true,
+                                noiseSuppression: true,
+                                autoGainControl: true
+                            },
+                            video: false
+                        };
+
+                        localStream = await navigator.mediaDevices.getUserMedia(audioOnlyConstraints);
+                        addDebugLog('Acceso solo al micrófono concedido', 'success');
+                        showError('No se pudo acceder a tu cámara, pero el micrófono está disponible.');
+                        updateMediaStatus('localAudio', 'active');
+                        updateMediaStatus('localVideo', 'inactive');
+                    } catch (audioError) {
+                        throw new Error('No se pudo acceder a la cámara ni al micrófono');
                     }
-                }, 100);
-                
-                addDebugLog('Analizador de audio inicializado correctamente', 'success');
-            } catch (err) {
-                console.error('Error setting up audio analyzer:', err);
-                addDebugLog('Error al inicializar el analizador de audio: ' + err.message, 'error');
-                showError('No se pudo inicializar el analizador de audio.');
-            }
-        }
-
-        function stopAudioTest() {
-            if (audioTestInterval) {
-                clearInterval(audioTestInterval);
-                audioTestInterval = null;
-            }
-            
-            if (audioContext) {
-                if (audioContext.state !== 'closed' && typeof audioContext.close === 'function') {
-                    audioContext.close();
                 }
-                audioContext = null;
+
+                // Mostrar video local
+                localVideo.srcObject = localStream;
+
+                return true;
+            } catch (err) {
+                addDebugLog(`Error al acceder a medios: ${err.message}`, 'error');
+                console.error('Error accessing media devices:', err);
+                showError('No se pudo acceder a tu cámara ni micrófono. Por favor, verifica los permisos en tu navegador y asegúrate de que los dispositivos estén conectados correctamente.');
+                return false;
             }
-            
-            if (microphone) {
-                microphone.disconnect();
-                microphone = null;
-            }
-            
-            if (analyser) {
-                analyser = null;
-            }
-            
-            audioTestActive = false;
-            testAudio.pause();
-            
-            addDebugLog('Prueba de audio detenida');
         }
 
-        function playTestAudio() {
-            testAudio.play().catch(error => {
-                console.error('Error playing test audio:', error);
-                addDebugLog('Error al reproducir audio de prueba: ' + error.message, 'error');
-                showError('No se pudo reproducir el audio de prueba. Verifica que tienes permisos de reproducción.');
-            });
+        // Función para inicializar PeerJS
+        function initializePeer() {
+            // Generar un ID aleatorio para este usuario
+            const randomId = 'user-' + Math.random().toString(36).substr(2, 9);
             
-            setTimeout(() => {
-                testAudio.pause();
-            }, 2000);
+            addDebugLog(`Inicializando conexión PeerJS con ID: ${randomId}`, 'info');
             
-            addDebugLog('Reproduciendo audio de prueba', 'info');
-        }
-
-        function initializePeer(userId) {
-            if (!userId) {
-                userId = 'user-' + Math.random().toString(36).substr(2, 9);
-            }
-            
-            localUserName = userId;
-            
-            addDebugLog(`Inicializando conexión PeerJS para usuario: ${userId}`, 'info');
-            
-            peer = new Peer(userId, {
+            peer = new Peer(randomId, {
                 debug: 3,
                 config: {
                     'iceServers': [
@@ -488,11 +392,16 @@
             });
             
             peer.on('open', (id) => {
-                peerId.value = id;
-                myIdContainer.classList.remove('hidden');
-                step2.classList.remove('hidden');
-                updateConnectionStatus('disconnected');
-                addDebugLog(`ID PeerJS obtenido: ${id}`, 'success');
+                addDebugLog(`Conexión PeerJS establecida con ID: ${id}`, 'success');
+                
+                // Registrar el ID de peer en la base de datos
+                registerPeerId(id);
+                
+                // Configurar eventos de peer
+                setupPeerEvents();
+                
+                // Iniciar el proceso de conexión
+                startConnectionProcess();
             });
             
             peer.on('error', (err) => {
@@ -520,12 +429,44 @@
                 }
                 
                 showError(errorMsg);
-                updateConnectionStatus('disconnected');
+                updateConnectionStatus('failed');
+                
+                // Intentar reconectar automáticamente
+                if (connectionRetries < maxRetries && !isConnecting) {
+                    connectionRetries++;
+                    addDebugLog(`Intento de reconexión automática ${connectionRetries}/${maxRetries}`, 'warning');
+                    setTimeout(startConnectionProcess, 3000);
+                }
+                
                 addDebugLog(`Error PeerJS: ${err.type} - ${err.message}`, 'error');
             });
+        }
+        
+        // Función para registrar el ID de peer
+        function registerPeerId(peerId) {
+            addDebugLog(`Registrando ID de peer: ${peerId} para sala: ${roomId}`, 'info');
             
+            fetch(`/register_peer_id/${roomId}/${peerId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    addDebugLog('ID de peer registrado correctamente', 'success');
+                } else {
+                    addDebugLog(`Error al registrar ID de peer: ${data.message}`, 'error');
+                    showError('Error al registrar ID de peer: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                addDebugLog(`Error al registrar ID de peer: ${error.message}`, 'error');
+                showError('Error al registrar ID de peer');
+            });
+        }
+        
+        function setupPeerEvents() {
             peer.on('call', (call) => {
-                updateConnectionStatus('connecting');
                 addDebugLog(`Llamada entrante de: ${call.peer}`, 'info');
                 
                 if (!localStream) {
@@ -547,158 +488,213 @@
             });
         }
         
-        async function setupMediaStream() {
-            try {
-                addDebugLog('Solicitando acceso a cámara y micrófono', 'info');
-                
-                const constraints = {
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    },
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: 'user'
+        function startConnectionProcess() {
+            addDebugLog('Iniciando proceso de conexión', 'info');
+            updateConnectionStatus('waiting');
+            
+            // Iniciar temporizador para verificar conexión
+            startConnectionTimer();
+            
+            // Verificar periódicamente si el otro usuario se ha conectado
+            checkOtherPeerInterval = setInterval(checkOtherPeer, 3000);
+        }
+
+        // Función para verificar si el otro usuario se ha conectado
+        function checkOtherPeer() {
+            if (isConnecting) return;
+            
+            fetch(`/get_peer_id/${roomId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // El otro usuario está conectado, intentar establecer conexión
+                        clearInterval(checkOtherPeerInterval);
+                        
+                        const otherPeerId = data.peer_id;
+                        addDebugLog(`Otro usuario conectado con ID: ${otherPeerId}`, 'success');
+                        
+                        connectToPeer(otherPeerId);
+                    } else if (data.status === 'waiting') {
+                        addDebugLog('Esperando a que el otro usuario se conecte...', 'info');
+                    } else {
+                        addDebugLog(`Error al verificar otro peer: ${data.message}`, 'error');
                     }
-                };
-                
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                addDebugLog('Acceso a cámara y micrófono concedido', 'success');
-     
-                initializeAudioTest(localStream);
-                
-                step1.classList.add('hidden');
-                audioTestPanel.classList.remove('hidden');
-                
-                return true;
-            } catch (err) {
-                addDebugLog(`Error al acceder a medios: ${err.message}`, 'error');
-                console.error('Error accessing media devices:', err);
-                
-                try {
-                    addDebugLog('Intentando acceder solo al micrófono', 'warning');
-                    const audioOnlyConstraints = {
-                        audio: {
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true
-                        },
-                        video: false
-                    };
-                    
-                    localStream = await navigator.mediaDevices.getUserMedia(audioOnlyConstraints);
-                    addDebugLog('Acceso solo al micrófono concedido', 'success');
-                    showError('No se pudo acceder a tu cámara, pero el micrófono está disponible.');
-                    
-                    initializeAudioTest(localStream);
-                    
-                    step1.classList.add('hidden');
-                    audioTestPanel.classList.remove('hidden');
-                    
-                    return true;
-                } catch (audioErr) {
-                    addDebugLog(`Error al acceder al micrófono: ${audioErr.message}`, 'error');
-                    console.error('Error accessing audio only:', audioErr);
-                    showError('No se pudo acceder a tu cámara ni micrófono. Por favor, verifica los permisos en tu navegador y asegúrate de que los dispositivos estén conectados correctamente.');
-                    return false;
-                }
-            }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    addDebugLog(`Error al verificar otro peer: ${error.message}`, 'error');
+                });
         }
         
-        function monitorMediaTracks() {
-            if (!currentCall || !remoteVideo.srcObject) return;
+        function connectToPeer(otherPeerId) {
+            if (isConnecting) return;
             
-            const videoTracks = remoteVideo.srcObject.getVideoTracks();
-            const audioTracks = remoteVideo.srcObject.getAudioTracks();
+            isConnecting = true;
+            remote_id = otherPeerId;
             
-            if (videoTracks.length > 0) {
-                const videoTrack = videoTracks[0];
-                updateMediaStatus('remoteVideo', videoTrack.enabled ? 'active' : 'inactive');
-                
-                videoTrack.onended = () => {
-                    updateMediaStatus('remoteVideo', 'inactive');
-                    addDebugLog('Pista de video remoto finalizada', 'warning');
-                };
-                
-                videoTrack.onmute = () => {
-                    updateMediaStatus('remoteVideo', 'inactive');
-                    addDebugLog('Pista de video remoto silenciada', 'warning');
-                };
-                
-                videoTrack.onunmute = () => {
-                    updateMediaStatus('remoteVideo', 'active');
-                    addDebugLog('Pista de video remoto reactivada', 'success');
-                };
-            } else {
-                updateMediaStatus('remoteVideo', 'inactive');
-                addDebugLog('No hay pistas de video remotas disponibles', 'warning');
-            }
-
-            if (audioTracks.length > 0) {
-                const audioTrack = audioTracks[0];
-                updateMediaStatus('remoteAudio', audioTrack.enabled ? 'active' : 'inactive');
-                
-                audioTrack.onended = () => {
-                    updateMediaStatus('remoteAudio', 'inactive');
-                    addDebugLog('Pista de audio remoto finalizada', 'warning');
-                };
-                
-                audioTrack.onmute = () => {
-                    updateMediaStatus('remoteAudio', 'inactive');
-                    addDebugLog('Pista de audio remoto silenciada', 'warning');
-                };
-                
-                audioTrack.onunmute = () => {
-                    updateMediaStatus('remoteAudio', 'active');
-                    addDebugLog('Pista de audio remoto reactivada', 'success');
-                };
-            } else {
-                updateMediaStatus('remoteAudio', 'inactive');
-                addDebugLog('No hay pistas de audio remotas disponibles', 'warning');
-            }
+            addDebugLog(`Intentando conectar con peer: ${otherPeerId}`, 'info');
+            updateConnectionStatus('connecting');
             
-            const localVideoTracks = localStream.getVideoTracks();
-            const localAudioTracks = localStream.getAudioTracks();
-            
-            if (localVideoTracks.length > 0) {
-                updateMediaStatus('localVideo', videoEnabled ? 'active' : 'inactive');
-            } else {
-                updateMediaStatus('localVideo', 'inactive');
-            }
-            
-            if (localAudioTracks.length > 0) {
-                updateMediaStatus('localAudio', audioEnabled ? 'active' : 'inactive');
-            } else {
-                updateMediaStatus('localAudio', 'inactive');
+            try {
+                // Establecer conexión de datos primero
+                const conn = peer.connect(otherPeerId, {
+                    reliable: true
+                });
+                
+                conn.on('open', () => {
+                    addDebugLog('Conexión de datos establecida', 'success');
+                    setupDataConnection(conn);
+                    
+                    // Una vez establecida la conexión de datos, iniciar la llamada
+                    if (localStream) {
+                        const call = peer.call(otherPeerId, localStream);
+                        setupCallEvents(call);
+                    } else {
+                        isConnecting = false;
+                        showError('No hay acceso a cámara/micrófono');
+                    }
+                });
+                
+                conn.on('error', (err) => {
+                    isConnecting = false;
+                    addDebugLog(`Error en conexión de datos: ${err.message}`, 'error');
+                    showError('Error al conectar: ' + err.message);
+                });
+            } catch (err) {
+                isConnecting = false;
+                addDebugLog(`Error al conectar con peer: ${err.message}`, 'error');
+                showError('Error al conectar: ' + err.message);
             }
         }
 
+        // Función para obtener información de la sala
+        function getRoomInfo() {
+            addDebugLog(`Obteniendo información de la sala: ${roomId}`, 'info');
+            updateConnectionStatus('waiting');
+
+            fetch(`/get_room_info/${roomId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const myUserId = "{{ session['user_id'] }}";
+                        let otherUserId;
+
+                        // Determinar si soy el caller o el receiver
+                        if (data.caller === myUserId) {
+                            otherUserId = data.receiver;
+                            addDebugLog(`Soy el caller, esperando a: ${otherUserId}`, 'info');
+                        } else {
+                            otherUserId = data.caller;
+                            addDebugLog(`Soy el receiver, esperando a: ${otherUserId}`, 'info');
+                        }
+
+                        // Iniciar temporizador para verificar conexión
+                        startConnectionTimer();
+
+                        // Esperar a que el otro usuario se conecte
+                        waitForOtherUser(otherUserId);
+                    } else {
+                        showError('No se pudo obtener información de la sala: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Error al obtener información de la sala');
+                });
+        }
+
+        // Función para esperar a que el otro usuario se conecte
+        function waitForOtherUser(otherUserId) {
+            // Intentar conectar cada 3 segundos
+            const checkInterval = setInterval(() => {
+                if (isConnecting) return;
+
+                isConnecting = true;
+                updateConnectionStatus('connecting');
+
+                addDebugLog(`Intentando conectar con: ${otherUserId}`, 'info');
+
+                try {
+                    // Establecer conexión de datos
+                    const conn = peer.connect(otherUserId);
+                    if (conn) {
+                        setupDataConnection(conn);
+                    }
+
+                    // Establecer llamada
+                    if (localStream) {
+                        const call = peer.call(otherUserId, localStream);
+                        if (call) {
+                            setupCallEvents(call);
+                        }
+                    }
+
+                    // Limpiar intervalo después de intentar conectar
+                    clearInterval(checkInterval);
+                } catch (err) {
+                    isConnecting = false;
+                    addDebugLog(`Error al intentar conectar: ${err.message}`, 'error');
+                }
+            }, 3000);
+
+            // Limpiar intervalo después de 30 segundos si no hay conexión
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (!currentCall) {
+                    addDebugLog('Tiempo de espera agotado. El otro usuario no se ha conectado.', 'warning');
+                    waitingMessage.textContent = 'El otro usuario aún no se ha conectado. Espera un momento...';
+                }
+            }, 30000);
+        }
+
+        // Función para iniciar temporizador de conexión
+        function startConnectionTimer() {
+            // Establecer un tiempo máximo de espera (2 minutos)
+            connectionTimeout = setTimeout(() => {
+                if (!currentCall) {
+                    showError('No se pudo establecer la conexión después de varios intentos. Por favor, intenta nuevamente más tarde.');
+                    addDebugLog('Tiempo de conexión agotado', 'error');
+                }
+            }, 120000);
+        }
+
+        // Función para configurar eventos de llamada
         function setupCallEvents(call) {
             currentCall = call;
-            
-            updateMediaStatus('remoteAudio', 'pending');
-            updateMediaStatus('remoteVideo', 'pending');
+            remote_id = call.peer;
             
             addDebugLog(`Configurando eventos para llamada con: ${call.peer}`, 'info');
             
             call.on('stream', (stream) => {
                 addDebugLog('Stream remoto recibido', 'success');
+                
+                // Asignar el stream al elemento de video
                 remoteVideo.srcObject = stream;
                 
-                localVideo.srcObject = localStream;
+                // Forzar la reproducción del video
+                try {
+                    remoteVideo.play();
+                } catch (err) {
+                    addDebugLog(`Error al reproducir video remoto: ${err.message}`, 'error');
+                }
                 
+                // Limpiar timeout de conexión
+                if (connectionTimeout) {
+                    clearTimeout(connectionTimeout);
+                    connectionTimeout = null;
+                }
+                
+                isConnecting = false;
+                connectionRetries = 0;
+                
+                // Monitorear pistas de medios
                 monitorMediaTracks();
                 
-                setInterval(monitorMediaTracks, 5000);
+                // IMPORTANTE: Forzar la actualización de la interfaz
+                document.getElementById('waitingScreen').style.display = 'none';
+                document.getElementById('videoChatContainer').style.display = 'block';
                 
-                step3.classList.remove('hidden');
-                step1.classList.add('hidden');
-                step2.classList.add('hidden');
-                myIdContainer.classList.add('hidden');
-                audioTestPanel.classList.add('hidden');
+                // Actualizar el estado de conexión
                 updateConnectionStatus('connected');
             });
             
@@ -712,25 +708,33 @@
                 addDebugLog(`Error en la llamada: ${err.message}`, 'error');
                 showError('Error en la llamada: ' + err.message);
                 
-                if (connectionRetries < maxRetries) {
+                if (connectionRetries < maxRetries && !isConnecting) {
                     connectionRetries++;
                     addDebugLog(`Intento de reconexión automática ${connectionRetries}/${maxRetries}`, 'warning');
-                    reconnectCall();
+                    setTimeout(reconnectCall, 3000);
                 } else {
                     endCall();
                 }
             });
         }
-        
+
+        // Función para configurar conexión de datos
         function setupDataConnection(conn) {
             dataConnection = conn;
-            
+
             addDebugLog(`Configurando conexión de datos con: ${conn.peer}`, 'info');
-            
+
             conn.on('open', () => {
                 addDebugLog('Conexión de datos establecida', 'success');
+
+                // Enviar mensaje de bienvenida
+                conn.send({
+                    type: 'chat',
+                    username: localUserName,
+                    message: '¡Hola! Me he conectado a la videollamada.'
+                });
             });
-            
+
             conn.on('data', (data) => {
                 if (data.type === 'chat') {
                     addChatMessage(data.username, data.message, false);
@@ -740,90 +744,162 @@
                     addDebugLog(`Reacción recibida: ${data.emoji}`, 'info');
                 }
             });
-            
+
             conn.on('close', () => {
                 addDebugLog('Conexión de datos cerrada', 'warning');
                 dataConnection = null;
             });
-            
+
             conn.on('error', (err) => {
                 console.error('Data connection error:', err);
                 addDebugLog(`Error en la conexión de datos: ${err.message}`, 'error');
                 dataConnection = null;
             });
         }
-        
+
+        // Función para monitorear pistas de medios
+        function monitorMediaTracks() {
+            if (!currentCall || !remoteVideo.srcObject) return;
+
+            const videoTracks = remoteVideo.srcObject.getVideoTracks();
+            const audioTracks = remoteVideo.srcObject.getAudioTracks();
+
+            if (videoTracks.length > 0) {
+                const videoTrack = videoTracks[0];
+                updateMediaStatus('remoteVideo', videoTrack.enabled ? 'active' : 'inactive');
+
+                videoTrack.onended = () => {
+                    updateMediaStatus('remoteVideo', 'inactive');
+                    addDebugLog('Pista de video remoto finalizada', 'warning');
+                };
+
+                videoTrack.onmute = () => {
+                    updateMediaStatus('remoteVideo', 'inactive');
+                    addDebugLog('Pista de video remoto silenciada', 'warning');
+                };
+
+                videoTrack.onunmute = () => {
+                    updateMediaStatus('remoteVideo', 'active');
+                    addDebugLog('Pista de video remoto reactivada', 'success');
+                };
+            } else {
+                updateMediaStatus('remoteVideo', 'inactive');
+                addDebugLog('No hay pistas de video remotas disponibles', 'warning');
+            }
+
+            if (audioTracks.length > 0) {
+                const audioTrack = audioTracks[0];
+                updateMediaStatus('remoteAudio', audioTrack.enabled ? 'active' : 'inactive');
+
+                audioTrack.onended = () => {
+                    updateMediaStatus('remoteAudio', 'inactive');
+                    addDebugLog('Pista de audio remoto finalizada', 'warning');
+                };
+
+                audioTrack.onmute = () => {
+                    updateMediaStatus('remoteAudio', 'inactive');
+                    addDebugLog('Pista de audio remoto silenciada', 'warning');
+                };
+
+                audioTrack.onunmute = () => {
+                    updateMediaStatus('remoteAudio', 'active');
+                    addDebugLog('Pista de audio remoto reactivada', 'success');
+                };
+            } else {
+                updateMediaStatus('remoteAudio', 'inactive');
+                addDebugLog('No hay pistas de audio remotas disponibles', 'warning');
+            }
+
+            const localVideoTracks = localStream.getVideoTracks();
+            const localAudioTracks = localStream.getAudioTracks();
+
+            if (localVideoTracks.length > 0) {
+                updateMediaStatus('localVideo', videoEnabled ? 'active' : 'inactive');
+            } else {
+                updateMediaStatus('localVideo', 'inactive');
+            }
+
+            if (localAudioTracks.length > 0) {
+                updateMediaStatus('localAudio', audioEnabled ? 'active' : 'inactive');
+            } else {
+                updateMediaStatus('localAudio', 'inactive');
+            }
+        }
+
+        // Función para reconectar la llamada
         function reconnectCall() {
             if (!remote_id || !localStream) {
                 addDebugLog('No se puede reconectar: falta ID remoto o stream local', 'error');
                 return;
             }
-            
+
+            isConnecting = true;
             addDebugLog(`Intentando reconectar con: ${remote_id}`, 'info');
             updateConnectionStatus('connecting');
-            
+
             if (currentCall) {
                 currentCall.close();
                 currentCall = null;
             }
-            
+
             if (dataConnection) {
                 dataConnection.close();
                 dataConnection = null;
             }
-            
-            const conn = peer.connect(remote_id);
-            setupDataConnection(conn);
-            
-            const call = peer.call(remote_id, localStream);
-            setupCallEvents(call);
+
+            try {
+                const conn = peer.connect(remote_id);
+                setupDataConnection(conn);
+
+                const call = peer.call(remote_id, localStream);
+                setupCallEvents(call);
+            } catch (err) {
+                isConnecting = false;
+                addDebugLog(`Error al reconectar: ${err.message}`, 'error');
+                showError('Error al reconectar: ' + err.message);
+            }
         }
-        
+
+        // Función para finalizar la llamada
         function endCall() {
             addDebugLog('Finalizando llamada', 'info');
-            
+
             if (currentCall) {
                 currentCall.close();
                 currentCall = null;
             }
-            
+
             if (dataConnection) {
                 dataConnection.close();
                 dataConnection = null;
             }
-            
+
+            isConnecting = false;
             connectionRetries = 0;
-            
+
             if (remoteVideo.srcObject) {
                 const tracks = remoteVideo.srcObject.getTracks();
                 tracks.forEach(track => track.stop());
                 remoteVideo.srcObject = null;
             }
-            
+
             chatMessages.innerHTML = '';
             chatPanel.classList.remove('open');
-            
-            step3.classList.add('hidden');
-            step1.classList.remove('hidden');
-            step2.classList.remove('hidden');
-            myIdContainer.classList.remove('hidden');
-            updateConnectionStatus('disconnected');
-            
-            updateMediaStatus('remoteAudio', 'pending');
-            updateMediaStatus('remoteVideo', 'pending');
-            updateMediaStatus('localAudio', 'pending');
-            updateMediaStatus('localVideo', 'pending');
+
+            // Redirigir a la página de chat
+            window.location.href = '/chat';
         }
-        
+
+        // Función para alternar audio
         function toggleAudio() {
             if (localStream) {
                 audioEnabled = !audioEnabled;
                 localStream.getAudioTracks().forEach(track => {
                     track.enabled = audioEnabled;
                 });
-                
+
                 updateMediaStatus('localAudio', audioEnabled ? 'active' : 'inactive');
-                
+
                 if (audioEnabled) {
                     toggleAudioBtn.innerHTML = `
                         <i class="fas fa-microphone"></i>
@@ -839,16 +915,17 @@
                 }
             }
         }
-        
+
+        // Función para alternar video
         function toggleVideo() {
             if (localStream) {
                 videoEnabled = !videoEnabled;
                 localStream.getVideoTracks().forEach(track => {
                     track.enabled = videoEnabled;
                 });
-                
+
                 updateMediaStatus('localVideo', videoEnabled ? 'active' : 'inactive');
-                
+
                 if (videoEnabled) {
                     toggleVideoBtn.innerHTML = `
                         <i class="fas fa-video"></i>
@@ -864,77 +941,83 @@
                 }
             }
         }
-        
+
+        // Función para alternar chat
         function toggleChat() {
             chatPanel.classList.toggle('open');
         }
-        
+
+        // Función para alternar depuración
         function toggleDebug() {
             debugContent.classList.toggle('open');
             toggleDebugBtn.textContent = debugContent.classList.contains('open') ? 'Ocultar' : 'Mostrar';
         }
-        
+
+        // Función para enviar mensaje de chat
         function sendChatMessage() {
             const message = chatInput.value.trim();
-            
+
             if (message && dataConnection) {
                 dataConnection.send({
                     type: 'chat',
                     username: localUserName,
                     message: message
                 });
-                
+
                 addChatMessage(localUserName, message, true);
                 chatInput.value = '';
                 addDebugLog(`Mensaje enviado: ${message}`, 'info');
             }
         }
-        
+
+        // Función para agregar mensaje de chat
         function addChatMessage(sender, message, isSent) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('chat-message');
-            
+
             if (isSent) {
                 messageElement.classList.add('sent-message');
             } else {
                 messageElement.classList.add('received-message');
-                
+
                 const senderElement = document.createElement('div');
                 senderElement.classList.add('message-sender');
                 senderElement.textContent = sender;
                 messageElement.appendChild(senderElement);
             }
-            
+
             const messageText = document.createElement('div');
             messageText.textContent = message;
             messageElement.appendChild(messageText);
-            
+
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-        
+
+        // Función para enviar reacción
         function sendReaction(emoji) {
             if (dataConnection) {
                 dataConnection.send({
                     type: 'reaction',
                     emoji: emoji
                 });
-                
+
                 addDebugLog(`Reacción enviada: ${emoji}`, 'info');
             }
-            
+
             showReaction(emoji, false);
         }
-        
+
+        // Función para mostrar reacción
         function showReaction(emoji, isRemote) {
             const reaction = document.createElement('div');
             reaction.classList.add('reaction');
             reaction.textContent = emoji;
-            
+
             const videoContainer = document.querySelector('.video-container');
-            
-            const posX = Math.random() * 80 + 10; 
-            
+
+            const posX = Math.random() * 80 + 10;
+
             if (isRemote) {
                 reaction.style.left = `${posX}%`;
                 reaction.style.bottom = '10%';
@@ -942,129 +1025,94 @@
                 reaction.style.right = '20%';
                 reaction.style.bottom = '20%';
             }
-            
+
             videoContainer.appendChild(reaction);
-            
+
             setTimeout(() => {
                 videoContainer.removeChild(reaction);
             }, 2000);
         }
-        
-        function continueAfterTest() {
-            stopAudioTest();
-            initializePeer(username.value.trim());
-            audioTestPanel.classList.add('hidden');
-        }
-        
-        generateBtn.addEventListener('click', async () => {
+
+        // Inicialización de la aplicación
+        async function initializeApp() {
+            // Verificar soporte de WebRTC
             if (!checkWebRTCSupport()) return;
             
-            addDebugLog('Iniciando configuración de medios', 'info');
-            await setupMediaStream();
-        });
-        
-        connectBtn.addEventListener('click', () => {
-            const remoteId = remotePeerId.value.trim();
+            // Obtener room_id de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            roomId = urlParams.get('room_id');
             
-            if (!remoteId) {
-                showError('Por favor, ingresa el ID del otro usuario.');
+            if (!roomId) {
+                showError('No se proporcionó un ID de sala válido.');
+                waitingMessage.textContent = 'Error: No se proporcionó un ID de sala válido.';
                 return;
             }
             
-            if (!localStream) {
-                showError('No se pudo acceder a tu cámara y micrófono. Por favor, genera tu ID primero.');
-                return;
+            addDebugLog(`Iniciando videollamada para sala: ${roomId}`, 'info');
+            
+            // Configurar stream de medios
+            const success = await setupMediaStream();
+            if (success) {
+                // Inicializar PeerJS
+                initializePeer();
+            } else {
+                waitingMessage.textContent = 'Error: No se pudo acceder a la cámara o micrófono.';
             }
-            
-            remote_id = remoteId;
-            
-            updateConnectionStatus('connecting');
-            addDebugLog(`Iniciando conexión con: ${remoteId}`, 'info');
-            
-            const conn = peer.connect(remoteId);
-            setupDataConnection(conn);
+        }
 
-            const call = peer.call(remoteId, localStream);
-            setupCallEvents(call);
-        });
-        
-        continueBtn.addEventListener('click', continueAfterTest);
-        
+        clearInterval(checkOtherPeerInterval);
+
+        // Event listeners
+        hangupBtn.addEventListener('click', endCall);
+        cancelCallBtn.addEventListener('click', endCall);
         reconnectBtn.addEventListener('click', () => {
-            addDebugLog('Reconexión manual iniciada', 'info');
-            connectionRetries = 0;  
+            connectionRetries = 0;
             reconnectCall();
         });
-        
-        testAudioBtn.addEventListener('click', playTestAudio);
-        
-        hangupBtn.addEventListener('click', endCall);
         toggleAudioBtn.addEventListener('click', toggleAudio);
         toggleVideoBtn.addEventListener('click', toggleVideo);
         toggleDebugBtn.addEventListener('click', toggleDebug);
-        
         toggleChatBtn.addEventListener('click', toggleChat);
         closeChatBtn.addEventListener('click', toggleChat);
-        
+
         sendMessageBtn.addEventListener('click', sendChatMessage);
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendChatMessage();
             }
         });
-        
+
         reactionBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const emoji = btn.getAttribute('data-emoji');
                 sendReaction(emoji);
             });
         });
-        
-        copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(peerId.value)
-                .then(() => {
-                    copyBtn.textContent = 'Copiado!';
-                    setTimeout(() => {
-                        copyBtn.textContent = 'Copiar';
-                    }, 2000);
-                    addDebugLog('ID copiado al portapapeles', 'success');
-                })
-                .catch(err => {
-                    console.error('No se pudo copiar al portapapeles:', err);
-                    addDebugLog(`Error al copiar al portapapeles: ${err.message}`, 'error');
-                });
-        });
-        
-        remoteVideo.addEventListener('loadedmetadata', () => {
-            addDebugLog('Video remoto cargado', 'success');
-        });
-        
-        remoteVideo.addEventListener('error', (e) => {
-            addDebugLog(`Error en video remoto: ${e.target.error.message || 'Error desconocido'}`, 'error');
-        });
-        
-        window.addEventListener('load', () => {
-            checkWebRTCSupport();
-            addDebugLog('Aplicación de WebRTC cargada', 'info');
-        });
-        
+
+        // Iniciar la aplicación cuando se cargue la página
+        window.addEventListener('load', initializeApp);
+
+        // Limpiar recursos antes de cerrar la página
         window.addEventListener('beforeunload', () => {
-            stopAudioTest();
-            
             if (currentCall) {
                 currentCall.close();
             }
-            
+
             if (dataConnection) {
                 dataConnection.close();
             }
-            
+
             if (peer) {
                 peer.destroy();
             }
-            
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+
             addDebugLog('Limpieza antes de cerrar', 'info');
         });
     </script>
 </body>
+
 </html>
