@@ -69,7 +69,7 @@ def register():
             "_id": user_id,
             "username": username,
             "password": hashed_password,
-            "profile_pic": "default.png",
+            "profile_pic": "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y",
             "created_at": datetime.utcnow()
         }
         MiBaseDatos.usuarios.insert_one(user)
@@ -133,6 +133,7 @@ def get_messages_with(contact_id):
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
         sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
         message['sender'] = sender['username']
+        message['sender_id'] = str(sender['_id'])
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
@@ -140,6 +141,7 @@ def get_messages_with(contact_id):
 def get_group_messages(group_id):
     if 'user_id' not in session:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = session['user_id']
     messages = list(MiBaseDatos.mensajes.find({"receiver": group_id, "type": "group"}))
     for message in messages:
         message['_id'] = str(message['_id'])
@@ -147,6 +149,7 @@ def get_group_messages(group_id):
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
         sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
         message['sender'] = sender['username']
+        message['sender_id'] = str(sender['_id'])
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
