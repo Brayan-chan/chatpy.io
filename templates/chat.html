@@ -80,7 +80,7 @@
       <header class="chat-header">
         <div class="header-left">
           <div class="avatar">
-            <img src="" alt="Chat">
+            <img id="chat-avatar" src="" alt="Chat">
           </div>
           <div>
             <h2 id="chat-title">Chats</h2>
@@ -373,6 +373,11 @@
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
               addMessageToChat(message.sender, message.message, msgType, message.sent_at);
             });
+            // Actualizar el avatar y el título del chat
+            const contact = data.contact;
+            document.getElementById('chat-avatar').src = contact.profile_pic;
+            document.getElementById('chat-title').textContent = contact.username;
+            document.getElementById('chat-subtitle').textContent = '';
           } else {
             console.error('Error:', data.message);
           }
@@ -392,6 +397,11 @@
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
               addMessageToChat(message.sender, message.message, msgType, message.sent_at);
             });
+            // Actualizar el avatar y el título del grupo
+            const group = data.group;
+            document.getElementById('chat-avatar').src = 'https://via.placeholder.com/150?text=Grupo';
+            document.getElementById('chat-title').textContent = group.group_name;
+            document.getElementById('chat-subtitle').textContent = '';
           } else {
             console.error('Error:', data.message);
           }
