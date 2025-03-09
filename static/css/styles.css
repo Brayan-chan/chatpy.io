@@ -144,10 +144,9 @@ body {
 
 .chat-list {
     display: flex;
-    overflow-y: auto !important;
-    scroll-behavior: smooth;
     flex-direction: column;
     gap: 2px;
+    overflow-y: auto;
 }
 
 .chat-item {
