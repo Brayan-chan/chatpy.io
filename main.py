@@ -297,6 +297,73 @@ def update_group_avatar():
             return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "error", "message": "Invalid data"}), 400
 
+@app.route('/start_videochat', methods=['POST'])
+def start_videochat():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    receiver_id = data.get('receiver_id')
+    if not receiver_id:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    room_id = str(ObjectId())
+    try:
+        MiBaseDatos.salas.insert_one({
+            "_id": room_id,
+            "caller": session['user_id'],
+            "receiver": receiver_id,
+            "status": "pending"
+        })
+        socketio.emit('videochat_request', {"room_id": room_id, "caller": session['user_id']}, room=receiver_id)
+        return jsonify({"status": "success", "room_id": room_id}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/accept_videochat', methods=['POST'])
+def accept_videochat():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    room_id = data.get('room_id')
+    if not room_id:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    try:
+        # Corregido: No usar ObjectId ya que room_id ya es un string
+        result = MiBaseDatos.salas.update_one(
+            {"_id": room_id, "receiver": session['user_id']},
+            {"$set": {"status": "received"}}
+        )
+        if result.modified_count == 1:
+            room = MiBaseDatos.salas.find_one({"_id": room_id})
+            socketio.emit('videochat_accepted', {"room_id": room_id}, room=room['caller'])
+            return jsonify({"status": "success"}), 200
+        else:
+            return jsonify({"status": "error", "message": "No se pudo aceptar la videollamada"}), 500
+    except Exception as e:
+        print(f"Error en accept_videochat: {e}")  # Log para depuración
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# Nueva ruta para obtener información de la sala
+@app.route('/get_room_info/<room_id>', methods=['GET'])
+def get_room_info(room_id):
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    
+    try:
+        room = MiBaseDatos.salas.find_one({"_id": room_id})
+        
+        if room:
+            return jsonify({
+                "status": "success", 
+                "caller": room['caller'], 
+                "receiver": room['receiver'],
+                "room_status": room['status']
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Sala no encontrada"}), 404
+    except Exception as e:
+        print(f"Error en get_room_info: {e}")  # Log para depuración
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @socketio.on('connect')
 def handle_connect():
     if 'user_id' in session:
@@ -353,6 +420,79 @@ def watch_messages():
                     receiver = message['receiver']
                     socketio.emit('new_message', message, room=receiver)
                     socketio.emit('new_message', message, room=sender)
+                    
+@app.route('/register_peer_id/<room_id>/<peer_id>', methods=['POST'])
+def register_peer_id(room_id, peer_id):
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"status": "error", "message": "No hay sesión activa"})
+        
+        # Obtener la sala
+        room = MiBaseDatos.salas.find_one({"_id": room_id})
+        if not room:
+            return jsonify({"status": "error", "message": "Sala no encontrada"})
+        
+        # Verificar que el usuario pertenezca a la sala
+        if user_id != room['caller'] and user_id != room['receiver']:
+            return jsonify({"status": "error", "message": "No tienes permiso para acceder a esta sala"})
+        
+        # Determinar si es caller o receiver
+        field_to_update = "caller_peer_id" if user_id == room['caller'] else "receiver_peer_id"
+        
+        # Actualizar el ID de peer en la sala
+        MiBaseDatos.salas.update_one(
+            {"_id": room_id},
+            {"$set": {field_to_update: peer_id}}
+        )
+        
+        return jsonify({"status": "success", "message": "ID de peer registrado correctamente"})
+    except Exception as e:
+        print(f"Error al registrar peer ID: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/get_peer_id/<room_id>', methods=['GET'])
+def get_peer_id(room_id):
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"status": "error", "message": "No hay sesión activa"})
+        
+        # Obtener la sala
+        room = MiBaseDatos.salas.find_one({"_id": room_id})
+        if not room:
+            return jsonify({"status": "error", "message": "Sala no encontrada"})
+        
+        # Verificar que el usuario pertenezca a la sala
+        if user_id != room['caller'] and user_id != room['receiver']:
+            return jsonify({"status": "error", "message": "No tienes permiso para acceder a esta sala"})
+        
+        # Determinar el ID del peer del otro usuario
+        other_peer_id = room.get('receiver_peer_id') if user_id == room['caller'] else room.get('caller_peer_id')
+        
+        if not other_peer_id:
+            return jsonify({"status": "waiting", "message": "El otro usuario aún no se ha conectado"})
+        
+        return jsonify({"status": "success", "peer_id": other_peer_id})
+    except Exception as e:
+        print(f"Error al obtener peer ID: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+def watch_videochat_requests():
+    with MiBaseDatos.salas.watch() as stream:
+        for change in stream:
+            try:
+                if change['operationType'] == 'update' and change['updateDescription']['updatedFields'].get('status') == 'received':
+                    # Obtener el documento completo después de la actualización
+                    room_id = change['documentKey']['_id']
+                    room = MiBaseDatos.salas.find_one({"_id": room_id})
+                    
+                    if room:
+                        socketio.emit('videochat_start', {"room_id": room['_id']}, room=room['caller'])
+                        socketio.emit('videochat_start', {"room_id": room['_id']}, room=room['receiver'])
+                        print(f"Videochat iniciado entre {room['caller']} y {room['receiver']}")
+            except Exception as e:
+                print(f"Error en watch_videochat_requests: {e}")
 
 uri = os.getenv('MONGO_URI')
 client = MongoClient(uri)
@@ -377,6 +517,9 @@ if 'contactos' not in MiBaseDatos.list_collection_names():
 if 'grupos' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('grupos')
 
+if 'salas' not in MiBaseDatos.list_collection_names():
+    MiBaseDatos.create_collection('salas')
+
 print(MiBaseDatos)
 print(MiBaseDatos.list_collection_names())
 
@@ -385,4 +528,6 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
     watcher_thread = Thread(target=watch_messages)
     watcher_thread.start()
+    videochat_watcher_thread = Thread(target=watch_videochat_requests)
+    videochat_watcher_thread.start()
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
