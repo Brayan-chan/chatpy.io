@@ -30,7 +30,7 @@ def send_message():
     message_content = data.get('message')
     if sender and receiver and message_content:
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-        message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
+        message_id = str(ObjectId())
         try:
             MiBaseDatos.mensajes.insert_one({
                 "_id": message_id,
@@ -110,6 +110,9 @@ def get_messages():
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        # Obtener el nombre del usuario en lugar de mostrar el ID
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        message['sender'] = sender['username']
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
@@ -128,6 +131,8 @@ def get_messages_with(contact_id):
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        message['sender'] = sender['username']
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
@@ -140,6 +145,8 @@ def get_group_messages(group_id):
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        message['sender'] = sender['username']
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
@@ -219,7 +226,7 @@ def create_group():
             members.append(admin)
             
     timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-    group_id = str(MiBaseDatos.grupos.count_documents({}) + 1).zfill(4)
+    group_id = str(ObjectId()) # Generar un ObjectId único
     group = {
         "_id": group_id,
         "group_name": group_name,
@@ -286,7 +293,7 @@ def handle_send_message(data):
     message_content = data.get('message')
     if sender and receiver and message_content:
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-        message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
+        message_id = str(ObjectId()) # Generar un ObjectId único
         try:
             message = {
                 "_id": message_id,
