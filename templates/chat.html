@@ -370,7 +370,7 @@
             const messagesContainer = document.querySelector('.messages-container');
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
-              const msgType = message.sender === sessionUserId ? 'sent' : 'received';
+              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
               addMessageToChat(message.sender, message.message, msgType, message.sent_at);
             });
           } else {
@@ -389,7 +389,7 @@
             const messagesContainer = document.querySelector('.messages-container');
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
-              const msgType = message.sender === sessionUserId ? 'sent' : 'received';
+              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
               addMessageToChat(message.sender, message.message, msgType, message.sent_at);
             });
           } else {
