@@ -95,7 +95,7 @@
           <button class="action-button">
             <i class="fas fa-search"></i>
           </button>
-          <button class="action-button">
+          <button class="action-button" id="group-settings-button">
             <i class="fas fa-ellipsis-v"></i>
           </button>
         </div>
@@ -158,6 +158,18 @@
         </div>
         <button id="add-group-submit" type="submit">Crear Grupo</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal para actualizar avatar del grupo -->
+  <div id="update-group-avatar-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" id="close-group-avatar-modal">&times;</span>
+      <h2>Actualizar Avatar del Grupo</h2>
+      <div class="avatar">
+        <img id="group-avatar-img" src="" alt="Avatar del Grupo">
+      </div>
+      <button id="upload-group-avatar-button" class="action-button">Subir nueva imagen</button>
     </div>
   </div>
 
@@ -343,7 +355,7 @@
             });
             // Actualizar el avatar y el título del grupo
             const group = data.group;
-            document.getElementById('chat-avatar').src = 'https://via.placeholder.com/150?text=Grupo';
+            document.getElementById('chat-avatar').src = group.profile_pic || 'https://via.placeholder.com/150?text=Grupo';
             document.getElementById('chat-title').textContent = group.group_name;
             document.getElementById('chat-subtitle').textContent = '';
           } else {
@@ -448,7 +460,7 @@
             });
             // Actualizar el avatar y el título del grupo
             const group = data.group;
-            document.getElementById('chat-avatar').src = 'https://via.placeholder.com/150?text=Grupo';
+            document.getElementById('chat-avatar').src = group.profile_pic || 'https://via.placeholder.com/150?text=Grupo';
             document.getElementById('chat-title').textContent = group.group_name;
             document.getElementById('chat-subtitle').textContent = '';
           } else {
@@ -496,7 +508,7 @@
       chatItem.dataset.id = group._id;
       chatItem.innerHTML = `
         <div class="avatar">
-          <i class="fas fa-users" style="font-size: 2rem;"></i>
+          <img src="${group.profile_pic}" alt="${group.group_name}">
         </div>
         <div class="chat-name">${group.group_name}</div>
         <div class="chat-info"><span></span></div>
@@ -508,6 +520,7 @@
         currentChatType = 'group';
         document.getElementById('chat-title').textContent = group.group_name;
         document.getElementById('chat-subtitle').textContent = '';
+        document.getElementById('chat-avatar').src = group.profile_pic;
         chatItem.querySelector('.unread-badge').textContent = '0';
         loadGroupMessages(group._id);
       });
@@ -777,6 +790,69 @@
         }
       });
     });
+
+    const groupSettingsButton = document.getElementById('group-settings-button');
+    const updateGroupAvatarModal = document.getElementById('update-group-avatar-modal');
+    const closeGroupAvatarModalButton = document.getElementById('close-group-avatar-modal');
+    const uploadGroupAvatarButton = document.getElementById('upload-group-avatar-button');
+
+    groupSettingsButton.addEventListener('click', function () {
+      updateGroupAvatarModal.style.display = 'block';
+    });
+
+    closeGroupAvatarModalButton.addEventListener('click', function () {
+      updateGroupAvatarModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', function (event) {
+      if (event.target === updateGroupAvatarModal) {
+        updateGroupAvatarModal.style.display = 'none';
+      }
+    });
+
+    uploadGroupAvatarButton.addEventListener('click', function () {
+      const groupId = currentChatUserId; // Asumiendo que currentChatUserId es el ID del grupo actual
+      updateGroupAvatar(groupId);
+    });
+
+    function updateGroupAvatar(groupId) {
+      cloudinary.openUploadWidget({
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ['local', 'url', 'camera'],
+        multiple: false,
+        cropping: true,
+        croppingAspectRatio: 1,
+        showSkipCropButton: false,
+        maxImageFileSize: 2000000, // 2MB
+        maxImageWidth: 1000,
+        maxImageHeight: 1000,
+        clientAllowedFormats: ["jpg", "jpeg", "png"]
+      }, (error, result) => {
+        if (!error && result && result.event === "success") {
+          const imageUrl = result.info.secure_url;
+          fetch('/update_group_avatar', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ group_id: groupId, avatar_url: imageUrl })
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data.status === 'success') {
+                document.getElementById('chat-avatar').src = imageUrl;
+                document.getElementById('group-avatar-img').src = imageUrl;
+                updateGroupAvatarModal.style.display = 'none';
+              } else {
+                alert('Error al actualizar el avatar del grupo: ' + data.message);
+              }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+      });
+    }
+
   </script>
 </body>
 
