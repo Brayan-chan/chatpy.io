@@ -257,6 +257,7 @@ def update_avatar():
             return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "error", "message": "Invalid data"}), 400
 
+
 @socketio.on('connect')
 def handle_connect():
     if 'user_id' in session:
@@ -284,6 +285,11 @@ def handle_send_message(data):
     receiver = data.get('receiver')
     message_type = data.get('type')
     message_content = data.get('message')
+
+    
+    socketio.emit('play_sound', {"receiver": receiver}, room=receiver)
+    print(f"Evento 'play_sound' emitido para {receiver}")
+
     if sender and receiver and message_content:
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
         message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
@@ -298,8 +304,12 @@ def handle_send_message(data):
                 "read_by": []
             }
             MiBaseDatos.mensajes.insert_one(message)
+            socketio.emit('new_message', message, room=receiver)
+            return jsonify({"status": "success"}), 200
         except Exception as e:
             print(f"Error sending message: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Invalid data"}), 400
 
 def watch_messages():
     with MiBaseDatos.mensajes.watch() as stream:
@@ -309,10 +319,8 @@ def watch_messages():
                 if message.get('type') == 'group':
                     socketio.emit('new_message', message, room=message['receiver'])
                 else:
-                    sender = message['sender']
-                    receiver = message['receiver']
-                    socketio.emit('new_message', message, room=receiver)
-                    socketio.emit('new_message', message, room=sender)
+                    socketio.emit('new_message', message, room=message['receiver']) #Emitir solo a receiver
+                    socketio.emit('play_sound', {"receiver": message['receiver']}, room=message['receiver'])
 
 uri = os.getenv('MONGO_URI')
 client = MongoClient(uri)
@@ -346,3 +354,4 @@ if __name__ == '__main__':
     watcher_thread = Thread(target=watch_messages)
     watcher_thread.start()
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
+
