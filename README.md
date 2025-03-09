@@ -6,6 +6,8 @@ Chatpy.io es un chat web que funcionara con socket.io, utilizando el paquete [so
 
 <img src="Anexos/conection.jpeg">
 
+## Reemplazar el .env.example por .env y reemplazar los valores con la URL de tu base de datos
+
 ## Crear entorno virtual para Windows
 
 ```bash
