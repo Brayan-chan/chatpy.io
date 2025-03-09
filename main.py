@@ -135,7 +135,10 @@ def get_messages_with(contact_id):
         message['sender'] = sender['username']
         message['sender_id'] = str(sender['_id'])
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
-    return jsonify({"status": "success", "messages": messages}), 200
+    contact = MiBaseDatos.usuarios.find_one({"_id": contact_id})
+    contact['_id'] = str(contact['_id'])
+    contact['profile_pic'] = contact.get('profile_pic', 'https://via.placeholder.com/150')
+    return jsonify({"status": "success", "messages": messages, "contact": contact}), 200
 
 @app.route('/get_group_messages/<group_id>', methods=['GET'])
 def get_group_messages(group_id):
@@ -151,7 +154,10 @@ def get_group_messages(group_id):
         message['sender'] = sender['username']
         message['sender_id'] = str(sender['_id'])
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
-    return jsonify({"status": "success", "messages": messages}), 200
+    group = MiBaseDatos.grupos.find_one({"_id": group_id})
+    group['_id'] = str(group['_id'])
+    group['profile_pic'] = 'https://via.placeholder.com/150?text=Grupo'
+    return jsonify({"status": "success", "messages": messages, "group": group}), 200
 
 @app.route('/add_contact', methods=['POST'])
 def add_contact():
