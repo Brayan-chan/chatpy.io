@@ -172,7 +172,9 @@
   <!-- Template para recibir mensajes -->
   <template id="message-template-received">
     <div class="message-group">
-      <div class="avatar"></div>
+      <div class="avatar">
+        <img src="" alt="Avatar">
+      </div>
       <div class="message received">
         <strong></strong>
         <p></p>
@@ -289,11 +291,12 @@
         messageInput.focus();
       });
 
-    function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null) {
+    function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null, avatar = '') {
       const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
       const template = document.getElementById(templateId).content.cloneNode(true);
       if (tipo === 'received') {
         template.querySelector('strong').textContent = nombre;
+        template.querySelector('.avatar img').src = avatar;
       }
       const timeString = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -302,6 +305,52 @@
       const messagesContainer = document.querySelector('.messages-container');
       messagesContainer.appendChild(template);
       scrollToBottom(messagesContainer);
+    }
+
+    function loadMessagesWith(contactId) {
+      fetch(`/get_messages_with/${contactId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            const messagesContainer = document.querySelector('.messages-container');
+            messagesContainer.innerHTML = '';
+            data.messages.forEach(message => {
+              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
+              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+            });
+            // Actualizar el avatar y el título del chat
+            const contact = data.contact;
+            document.getElementById('chat-avatar').src = contact.profile_pic;
+            document.getElementById('chat-title').textContent = contact.username;
+            document.getElementById('chat-subtitle').textContent = '';
+          } else {
+            console.error('Error:', data.message);
+          }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function loadGroupMessages(groupId) {
+      fetch(`/get_group_messages/${groupId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            const messagesContainer = document.querySelector('.messages-container');
+            messagesContainer.innerHTML = '';
+            data.messages.forEach(message => {
+              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
+              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+            });
+            // Actualizar el avatar y el título del grupo
+            const group = data.group;
+            document.getElementById('chat-avatar').src = 'https://via.placeholder.com/150?text=Grupo';
+            document.getElementById('chat-title').textContent = group.group_name;
+            document.getElementById('chat-subtitle').textContent = '';
+          } else {
+            console.error('Error:', data.message);
+          }
+        })
+        .catch(error => console.error('Error:', error));
     }
 
     // Función para actualizar el badge de mensajes no leídos en un chat
@@ -371,7 +420,7 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at);
+              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
             });
             // Actualizar el avatar y el título del chat
             const contact = data.contact;
@@ -395,7 +444,7 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at);
+              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
             });
             // Actualizar el avatar y el título del grupo
             const group = data.group;
