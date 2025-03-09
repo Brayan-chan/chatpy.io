@@ -12,6 +12,78 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  <style>
+    /* Estilos para dispositivos móviles */
+    @media (max-width: 768px) {
+      .chat-container {
+        grid-template-columns: 1fr !important;
+      }
+
+      .nav-sidebar {
+        display: none;
+      }
+
+      .chat-sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+        z-index: 40;
+        transition: left 0.3s ease;
+      }
+
+      .chat-sidebar.active {
+        left: 0;
+      }
+
+      .mobile-nav {
+        display: flex !important;
+      }
+    }
+
+    .mobile-nav {
+      display: none;
+      padding: 0.5rem;
+    }
+
+    .mobile-menu-button {
+      background: none;
+      border: none;
+      color: #8f8f8f;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .videochat-notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #056162;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
+
+    .videochat-notification button {
+      background-color: #0a7373;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+      font-weight: bold;
+    }
+
+    .videochat-notification button:hover {
+      background-color: #056162;
+    }
+  </style>
 </head>
 
 <body>
@@ -58,6 +130,9 @@
           <button class="action-button">
             <i class="fas fa-ellipsis-v"></i>
           </button>
+          <button class="mobile-menu-button hidden md:hidden" id="close-sidebar-button">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
       </div>
 
@@ -79,8 +154,13 @@
     <main class="chat-main">
       <header class="chat-header">
         <div class="header-left">
+          <div class="mobile-nav">
+            <button class="mobile-menu-button" id="mobile-menu-button">
+              <i class="fas fa-bars"></i>
+            </button>
+          </div>
           <div class="avatar">
-            <img id="chat-avatar" src="" alt="Chat">
+            <img id="chat-avatar" src="/placeholder.svg" alt="Chat">
           </div>
           <div>
             <h2 id="chat-title">Chats</h2>
@@ -89,7 +169,7 @@
         </div>
         <div class="header-right">
           <!-- Botón para el videochat-->
-          <button onclick="location.href = '/videochat';" class="action-button">
+          <button onclick="startVideochat()" class="action-button">
             <i class="fas fa-video"></i>
           </button>
           <button class="action-button">
@@ -127,6 +207,12 @@
         <emoji-picker></emoji-picker>
       </div>
     </main>
+  </div>
+
+  <div id="videochat-notification" class="videochat-notification" style="display: none;">
+    <span>Videollamada entrante...</span>
+    <button onclick="acceptVideochat()">Aceptar</button>
+    <button onclick="rejectVideochat()" style="background-color: #b54040;">Rechazar</button>
   </div>
 
   <!-- Modal para agregar contactos -->
@@ -167,7 +253,7 @@
       <span class="close-button" id="close-group-avatar-modal">&times;</span>
       <h2>Actualizar Avatar del Grupo</h2>
       <div class="avatar">
-        <img id="group-avatar-img" src="" alt="Avatar del Grupo">
+        <img id="group-avatar-img" src="/placeholder.svg" alt="Avatar del Grupo">
       </div>
       <button id="upload-group-avatar-button" class="action-button">Subir nueva imagen</button>
     </div>
@@ -185,7 +271,7 @@
   <template id="message-template-received">
     <div class="message-group">
       <div class="avatar">
-        <img src="" alt="Avatar">
+        <img src="/placeholder.svg" alt="Avatar">
       </div>
       <div class="message received">
         <strong></strong>
@@ -197,8 +283,8 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script>
-
     const socket = io();
+    let currentRoomId = null;
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -208,6 +294,72 @@
       console.log('Disconnected from server');
     });
 
+    socket.on('videochat_request', (data) => {
+      currentRoomId = data.room_id;
+      document.getElementById('videochat-notification').style.display = 'flex';
+    });
+
+    socket.on('videochat_start', (data) => {
+      window.open(`/videochat?room_id=${data.room_id}`, '_blank');
+    });
+
+    function startVideochat() {
+      if (currentChatUserId) {
+        fetch('/start_videochat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ receiver_id: currentChatUserId })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            console.log('Videollamada iniciada, room_id:', data.room_id);
+            // Redirigir a la página de videochat con el room_id
+            window.open(`/videochat?room_id=${data.room_id}`, '_blank');
+          } else {
+            console.error('Error al iniciar videollamada:', data.message);
+          }
+        })
+        .catch(error => console.error('Error:', error));
+      } else {
+        console.error('No hay un chat seleccionado');
+        alert('Selecciona un chat primero para iniciar una videollamada');
+      }
+    }
+
+    function acceptVideochat() {
+      if (currentRoomId) {
+        fetch('/accept_videochat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ room_id: currentRoomId })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            console.log('Videollamada aceptada');
+            document.getElementById('videochat-notification').style.display = 'none';
+            // Abrir en una nueva pestaña
+            window.open(`/videochat?room_id=${currentRoomId}`, '_blank');
+          } else {
+            console.error('Error al aceptar videollamada:', data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+      }
+    }
+
+    function rejectVideochat() {
+      document.getElementById('videochat-notification').style.display = 'none';
+      currentRoomId = null;
+    }
+
     // Variables de sesión y control de chat
     const sessionUserId = "{{ session['user_id'] }}";
     let currentChatUserId = null; // Puede ser id de contacto o de grupo
@@ -216,6 +368,35 @@
     const settingsButton = document.getElementById('settings-button');
     const dropdownMenu = document.getElementById('dropdown-menu');
     let isOpen = false;
+
+    // Manejo del menú móvil
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const closeSidebarButton = document.getElementById('close-sidebar-button');
+    const chatSidebar = document.querySelector('.chat-sidebar');
+
+    mobileMenuButton.addEventListener('click', () => {
+      chatSidebar.classList.add('active');
+    });
+
+    closeSidebarButton.addEventListener('click', () => {
+      chatSidebar.classList.remove('active');
+    });
+
+    // Cerrar sidebar al hacer clic fuera en móvil
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768 && 
+          !chatSidebar.contains(e.target) && 
+          !mobileMenuButton.contains(e.target)) {
+        chatSidebar.classList.remove('active');
+      }
+    });
+
+    // Manejar cambios de tamaño de ventana
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        chatSidebar.classList.remove('active');
+      }
+    });
 
     // Enviar mensaje (según currentChatType)
     function messageSend() {
@@ -421,54 +602,6 @@
       loadContacts();
       loadGroups();
     });
-
-    // Cargar mensajes privados
-    function loadMessagesWith(contactId) {
-      fetch(`/get_messages_with/${contactId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            const messagesContainer = document.querySelector('.messages-container');
-            messagesContainer.innerHTML = '';
-            data.messages.forEach(message => {
-              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
-            });
-            // Actualizar el avatar y el título del chat
-            const contact = data.contact;
-            document.getElementById('chat-avatar').src = contact.profile_pic;
-            document.getElementById('chat-title').textContent = contact.username;
-            document.getElementById('chat-subtitle').textContent = '';
-          } else {
-            console.error('Error:', data.message);
-          }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
-    // Cargar mensajes de grupo
-    function loadGroupMessages(groupId) {
-      fetch(`/get_group_messages/${groupId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            const messagesContainer = document.querySelector('.messages-container');
-            messagesContainer.innerHTML = '';
-            data.messages.forEach(message => {
-              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
-            });
-            // Actualizar el avatar y el título del grupo
-            const group = data.group;
-            document.getElementById('chat-avatar').src = group.profile_pic || 'https://via.placeholder.com/150?text=Grupo';
-            document.getElementById('chat-title').textContent = group.group_name;
-            document.getElementById('chat-subtitle').textContent = '';
-          } else {
-            console.error('Error:', data.message);
-          }
-        })
-        .catch(error => console.error('Error:', error));
-    }
 
     // Agregar item de contacto a la lista de chats (se asigna data-id)
     function addChatItem(contact) {
@@ -699,58 +832,6 @@
         .catch(error => console.error('Error:', error));
     });
 
-    const style = document.createElement('style');
-    style.textContent = `
-      .scroll-bottom-button {
-        position: absolute;
-        bottom: 80px;
-        right: 20px;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: #056162;
-        border: none;
-        color: white;
-        cursor: pointer;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        z-index: 100;
-        transition: all 0.3s ease;
-      }
-      .scroll-bottom-button:hover {
-        background-color: #0a7373;
-        transform: translateY(-2px);
-      }
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 200;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.5);
-      }
-      .modal-content {
-        background-color: #fefefe;
-        margin: 10% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 500px;
-      }
-      .close-button {
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-      }
-    `;
-    document.head.appendChild(style);
-
     //Configuración de Cloudinary
     const CLOUDINARY_CLOUD_NAME = 'dmyejrbs7';
     const CLOUDINARY_UPLOAD_PRESET = 'apuntes';
@@ -852,7 +933,6 @@
         }
       });
     }
-
   </script>
 </body>
 
