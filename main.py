@@ -214,6 +214,7 @@ def get_groups():
     groups = list(MiBaseDatos.grupos.find({"members": user_id}))
     for group in groups:
         group['_id'] = str(group['_id'])
+        group['profile_pic'] = group.get('profile_pic', 'https://via.placeholder.com/150?text=Grupo')
     return jsonify({"status": "success", "groups": groups}), 200
 
 @app.route('/create_group', methods=['POST'])
@@ -271,6 +272,27 @@ def update_avatar():
                 return jsonify({"status": "success"}), 200
             else:
                 return jsonify({"status": "error", "message": "No se pudo actualizar el avatar"}), 500
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Invalid data"}), 400
+
+@app.route('/update_group_avatar', methods=['POST'])
+def update_group_avatar():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    group_id = data.get('group_id')
+    avatar_url = data.get('avatar_url')
+    if group_id and avatar_url:
+        try:
+            result = MiBaseDatos.grupos.update_one(
+                {"_id": group_id},
+                {"$set": {"profile_pic": avatar_url}}
+            )
+            if result.modified_count == 1:
+                return jsonify({"status": "success"}), 200
+            else:
+                return jsonify({"status": "error", "message": "No se pudo actualizar el avatar del grupo"}), 500
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "error", "message": "Invalid data"}), 400
