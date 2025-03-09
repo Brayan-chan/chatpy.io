@@ -1,19 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-  <title>chatpy.io</title>
-  <link rel="stylesheet" href="../static/css/styles.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
-  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
-  <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="../static/styles.css">
+  <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png">
+  <title>chatpy.io</title>
 </head>
-
 <body>
   <div class="chat-container">
     <nav class="nav-sidebar">
@@ -26,8 +22,7 @@
       <div class="nav-bottom">
         <div class="dropdown">
           <div class="nav-icon action-button cursor-pointer" id="settings-button">
-            <!-- Botón para cerrar la sesión -->
-            <i class="fas fa-sign-out-alt"></i>
+            <i class="fas fa-cog"></i>
           </div>
           <div id="dropdown-menu" class="dropdown-menu">
             <a href="/logout">
@@ -36,11 +31,8 @@
             </a>
           </div>
         </div>
-        <!-- Este div sirve para cargar y mostrar la imagen del usuario -->
         <div class="user-avatar">
-          <a id="upload-avatar-link" class="action-button" href="javascript:void(0);">
-            <img id="user-avatar-img" src="{{ user.profile_pic }}" alt="Tú">
-          </a>
+          <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/461338513_543649241643596_1140871026957553677_n.jpg?ccb=11-4&oh=01_Q5AaIDUIt2ARpZvXBf1kgVemO0mwXtykj8ZxR0YDgFMIlL_S&oe=67AC9A42&_nc_sid=5e03e0&_nc_cat=108" alt="Tú">
         </div>
       </div>
     </nav>
@@ -80,7 +72,7 @@
       <header class="chat-header">
         <div class="header-left">
           <div class="avatar">
-            <img src="" alt="Chat">
+            <img src="https://media-mia3-1.cdn.whatsapp.net/v/t61.24694-24/473400983_937214201872149_888653449431714886_n.jpg?ccb=11-4&oh=01_Q5AaIKJDHgQXNi1AsuEgYc9hfxU4NxtyO4wBJG57nyDb_E33&oe=67AAC1D7&_nc_sid=5e03e0&_nc_cat=111" alt="Chat">
           </div>
           <div>
             <h2 id="chat-title">Chats</h2>
@@ -88,10 +80,6 @@
           </div>
         </div>
         <div class="header-right">
-          <!-- Botón para el videochat-->
-          <button onclick="location.href = '/videochat';" class="action-button">
-            <i class="fas fa-video"></i>
-          </button>
           <button class="action-button">
             <i class="fas fa-search"></i>
           </button>
@@ -122,10 +110,6 @@
           <i class="fas fa-microphone"></i>
         </button>
       </div>
-
-      <div id="emoji-picker-container">
-        <emoji-picker></emoji-picker>
-      </div>
     </main>
   </div>
 
@@ -136,7 +120,7 @@
       <h2>Agregar Contacto</h2>
       <form id="add-contact-form">
         <input type="text" id="contact-username" placeholder="Nombre de usuario" required>
-        <button id="add-contact-submit" type="submit">Agregar</button>
+        <button type="submit">Agregar</button>
       </form>
     </div>
   </div>
@@ -156,12 +140,11 @@
         <div id="group-admins-list">
           <!-- Se cargarán los checkboxes de contactos para admin -->
         </div>
-        <button id="add-group-submit" type="submit">Crear Grupo</button>
+        <button type="submit">Crear Grupo</button>
       </form>
     </div>
   </div>
 
-  <!-- Template para enviar mensajes -->
   <template id="message-template-sent">
     <div class="message sent">
       <p></p>
@@ -169,7 +152,6 @@
     </div>
   </template>
 
-  <!-- Template para recibir mensajes -->
   <template id="message-template-received">
     <div class="message-group">
       <div class="avatar"></div>
@@ -183,7 +165,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script>
-
     const socket = io();
 
     socket.on('connect', () => {
@@ -194,17 +175,15 @@
       console.log('Disconnected from server');
     });
 
-    // Variables de sesión y control de chat
     const sessionUserId = "{{ session['user_id'] }}";
-    let currentChatUserId = null; // Puede ser id de contacto o de grupo
-    let currentChatType = 'private'; // 'private' o 'group'
+    let currentChatUserId = null;
+    let currentChatType = 'private';
 
     const settingsButton = document.getElementById('settings-button');
     const dropdownMenu = document.getElementById('dropdown-menu');
     let isOpen = false;
 
-    // Enviar mensaje (según currentChatType)
-    function messageSend() {
+    document.getElementById('send-button').addEventListener('click', function () {
       const messageInput = document.getElementById('message-input');
       const message = messageInput.value;
       if (message.trim() !== '' && currentChatUserId) {
@@ -217,20 +196,8 @@
         socket.emit('send_message', data);
         messageInput.value = '';
       }
-    };
-
-    // Evento al hacer clic en el botón Enviar
-    document.getElementById('send-button').addEventListener("click", messageSend);
-
-    // Evento al presionar la tecla Enter en el campo de mensaje
-    document.getElementById('message-input').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey) { // Enter sin Shift
-        e.preventDefault(); // Evita el salto de línea o el envío del formulario
-        messageSend(); // Llama a la función para enviar el mensaje
-      }
     });
 
-    // Manejo de nuevos mensajes: se muestran si corresponden al chat activo, y si no, se actualiza el badge
     socket.on('new_message', (data) => {
       const { sender, receiver, message, type } = data;
       if (type === 'group') {
@@ -240,7 +207,6 @@
           updateUnreadBadge(receiver);
         }
       } else {
-        // Mensaje privado
         if (currentChatType === 'private' && (sender === currentChatUserId || receiver === currentChatUserId)) {
           addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received');
         } else {
@@ -250,44 +216,27 @@
       }
     });
 
-    // Escuchar evento "new_group" para agregar el grupo en tiempo real
     socket.on('new_group', (data) => {
       console.log("Nuevo grupo recibido:", data);
       addGroupChatItem(data);
     });
 
-    // Escuchar evento "group_list" para cargar la lista de grupos al conectar
+    socket.on('play_sound', () => {
+      console.log("Evento 'play_sound' recibido, reproduciendo sonido...");
+      var audio = new Audio('/static/notification.mp3');
+      audio.play();
+    });
+
     socket.on('group_list', (data) => {
       if (data.groups) {
         data.groups.forEach(group => addGroupChatItem(group));
       }
     });
 
-    const emojiButton = document.getElementById('emoji-button');
-    const emojiPickerContainer = document.getElementById('emoji-picker-container');
-    const messageInput = document.getElementById('message-input');
-    let isEmojiPickerVisible = false;
-
-    emojiButton.addEventListener('click', () => {
-      isEmojiPickerVisible = !isEmojiPickerVisible;
-      emojiPickerContainer.style.display = isEmojiPickerVisible ? 'block' : 'none';
+    document.getElementById('emoji-button').addEventListener('click', function () {
+      const messageInput = document.getElementById('message-input');
+      messageInput.value += '😊';
     });
-
-    // Cerrar emoji picker si se hace click fuera de él
-    document.addEventListener('click', (e) => {
-      if (!emojiButton.contains(e.target) &&
-        !emojiPickerContainer.contains(e.target)) {
-        emojiPickerContainer.style.display = 'none';
-        isEmojiPickerVisible = false;
-      }
-    });
-
-    // Selector de emoji
-    document.querySelector('emoji-picker')
-      .addEventListener('emoji-click', event => {
-        messageInput.value += event.detail.unicode;
-        messageInput.focus();
-      });
 
     function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null) {
       const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
@@ -304,7 +253,6 @@
       scrollToBottom(messagesContainer);
     }
 
-    // Función para actualizar el badge de mensajes no leídos en un chat
     function updateUnreadBadge(chatId) {
       const chatItems = document.querySelectorAll('.chat-item');
       chatItems.forEach(item => {
@@ -361,7 +309,6 @@
       loadGroups();
     });
 
-    // Cargar mensajes privados
     function loadMessagesWith(contactId) {
       fetch(`/get_messages_with/${contactId}`)
         .then(response => response.json())
@@ -380,7 +327,6 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Cargar mensajes de grupo
     function loadGroupMessages(groupId) {
       fetch(`/get_group_messages/${groupId}`)
         .then(response => response.json())
@@ -399,7 +345,6 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Agregar item de contacto a la lista de chats (se asigna data-id)
     function addChatItem(contact) {
       const chatList = document.querySelector('.chat-list');
       const chatItem = document.createElement('div');
@@ -419,17 +364,14 @@
         currentChatType = 'private';
         document.getElementById('chat-title').textContent = contact.username;
         document.getElementById('chat-subtitle').textContent = '';
-        // Al abrir el chat se resetea el badge
         chatItem.querySelector('.unread-badge').textContent = '0';
         loadMessagesWith(contact._id);
       });
       chatList.appendChild(chatItem);
     }
 
-    // Agregar item de grupo a la lista de chats
     function addGroupChatItem(group) {
       const chatList = document.querySelector('.chat-list');
-      // Evitar duplicados
       const exists = [...chatList.children].some(item => item.dataset.id === group._id);
       if (exists) return;
       const chatItem = document.createElement('div');
@@ -455,7 +397,6 @@
       chatList.appendChild(chatItem);
     }
 
-    // Cargar contactos desde el backend
     function loadContacts() {
       fetch('/get_contacts')
         .then(response => response.json())
@@ -471,97 +412,8 @@
         .catch(error => console.error('Error:', error));
     }
 
-    // Cargar grupos desde el backend
-    function loadGroups() {
-      fetch('/get_groups')
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            data.groups.forEach(group => {
-              addGroupChatItem(group);
-            });
-          } else {
-            console.error('Error al cargar grupos:', data.message);
-          }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
-    // Modal para agregar contactos
-    const addContactButton = document.getElementById('add-contact-button');
-    const addContactModal = document.getElementById('add-contact-modal');
-    const closeContactModalButton = document.querySelector('#add-contact-modal .close-button');
-    const addContactForm = document.getElementById('add-contact-form');
-
-    addContactButton.addEventListener('click', function () {
-      addContactModal.style.display = 'block';
-    });
-
-    closeContactModalButton.addEventListener('click', function () {
-      addContactModal.style.display = 'none';
-    });
-
-    window.addEventListener('click', function (event) {
-      if (event.target === addContactModal) {
-        addContactModal.style.display = 'none';
-      }
-    });
-
-    addContactForm.addEventListener('submit', function (event) {
-      event.preventDefault();
-      const contactUsername = document.getElementById('contact-username').value;
-      fetch('/add_contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: sessionUserId,
-          contact_username: contactUsername
-        })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            alert('Contacto agregado exitosamente');
-            addContactModal.style.display = 'none';
-            fetch(`/get_user/${contactUsername}`)
-              .then(response => response.json())
-              .then(userData => {
-                if (userData.status === 'success') {
-                  addChatItem(userData.user);
-                }
-              });
-          } else {
-            alert('Error al agregar contacto: ' + data.message);
-          }
-        })
-        .catch(error => console.error('Error:', error));
-    });
-
-    // Modal para crear grupo
-    const createGroupButton = document.getElementById('create-group-button');
-    const createGroupModal = document.getElementById('create-group-modal');
-    const closeGroupModalButton = document.getElementById('close-group-modal');
-    const createGroupForm = document.getElementById('create-group-form');
-
-    createGroupButton.addEventListener('click', function () {
-      createGroupModal.style.display = 'block';
-      loadContactsForGroup();
-    });
-
-    closeGroupModalButton.addEventListener('click', function () {
-      createGroupModal.style.display = 'none';
-    });
-
-    window.addEventListener('click', function (event) {
-      if (event.target === createGroupModal) {
-        createGroupModal.style.display = 'none';
-      }
-    });
-
-    // Cargar contactos en el modal de grupo
-    function loadContactsForGroup() {
+     // Cargar contactos en el modal de grupo
+     function loadContactsForGroup() {
       fetch('/get_contacts')
         .then(response => response.json())
         .then(data => {
