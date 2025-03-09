@@ -162,6 +162,35 @@ body {
     cursor: pointer;
 }
 
+.scroll-bottom-button {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #056162;
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    opacity: 0.8;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.scroll-bottom-button:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.scroll-bottom-button i {
+    font-size: 18px;
+}
+
 .chat-item:hover {
     background-color: #2a2a2a;
 }
