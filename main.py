@@ -134,6 +134,7 @@ def get_messages_with(contact_id):
         sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
         message['sender'] = sender['username']
         message['sender_id'] = str(sender['_id'])
+        message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     contact = MiBaseDatos.usuarios.find_one({"_id": contact_id})
     contact['_id'] = str(contact['_id'])
@@ -153,6 +154,7 @@ def get_group_messages(group_id):
         sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
         message['sender'] = sender['username']
         message['sender_id'] = str(sender['_id'])
+        message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     group = MiBaseDatos.grupos.find_one({"_id": group_id})
     group['_id'] = str(group['_id'])
