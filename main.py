@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 from pytz import timezone
 from bson import ObjectId
+from flask_socketio import emit  # Importar la función emit
 
 load_dotenv('.env')
 app = Flask(__name__)
@@ -30,7 +31,7 @@ def send_message():
     message_content = data.get('message')
     if sender and receiver and message_content:
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-        message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
+        message_id = str(ObjectId())
         try:
             MiBaseDatos.mensajes.insert_one({
                 "_id": message_id,
@@ -69,7 +70,7 @@ def register():
             "_id": user_id,
             "username": username,
             "password": hashed_password,
-            "profile_pic": "default.png",
+            "profile_pic": "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y",
             "created_at": datetime.utcnow()
         }
         MiBaseDatos.usuarios.insert_one(user)
@@ -110,6 +111,9 @@ def get_messages():
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        # Obtener el nombre del usuario en lugar de mostrar el ID
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        message['sender'] = sender['username']
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
     return jsonify({"status": "success", "messages": messages}), 200
 
@@ -128,20 +132,37 @@ def get_messages_with(contact_id):
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        # Buscar el nombre de usuario del remitente
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        if sender:
+            message['sender'] = sender['username']  # Actualizar el campo 'sender' con el nombre de usuario
+        message['sender_id'] = str(sender['_id'])
+        message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
-    return jsonify({"status": "success", "messages": messages}), 200
+    contact = MiBaseDatos.usuarios.find_one({"_id": contact_id})
+    contact['_id'] = str(contact['_id'])
+    contact['profile_pic'] = contact.get('profile_pic', 'https://via.placeholder.com/150')
+    return jsonify({"status": "success", "messages": messages, "contact": contact}), 200
 
 @app.route('/get_group_messages/<group_id>', methods=['GET'])
 def get_group_messages(group_id):
     if 'user_id' not in session:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = session['user_id']
     messages = list(MiBaseDatos.mensajes.find({"receiver": group_id, "type": "group"}))
     for message in messages:
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        message['sender'] = sender['username']
+        message['sender_id'] = str(sender['_id'])
+        message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
-    return jsonify({"status": "success", "messages": messages}), 200
+    group = MiBaseDatos.grupos.find_one({"_id": group_id})
+    group['_id'] = str(group['_id'])
+    group['profile_pic'] = 'https://via.placeholder.com/150?text=Grupo'
+    return jsonify({"status": "success", "messages": messages, "group": group}), 200
 
 @app.route('/add_contact', methods=['POST'])
 def add_contact():
@@ -196,6 +217,7 @@ def get_groups():
     groups = list(MiBaseDatos.grupos.find({"members": user_id}))
     for group in groups:
         group['_id'] = str(group['_id'])
+        group['profile_pic'] = group.get('profile_pic', 'https://via.placeholder.com/150?text=Grupo')
     return jsonify({"status": "success", "groups": groups}), 200
 
 @app.route('/create_group', methods=['POST'])
@@ -219,7 +241,7 @@ def create_group():
             members.append(admin)
             
     timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-    group_id = str(MiBaseDatos.grupos.count_documents({}) + 1).zfill(4)
+    group_id = str(ObjectId()) # Generar un ObjectId único
     group = {
         "_id": group_id,
         "group_name": group_name,
@@ -257,6 +279,93 @@ def update_avatar():
             return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "error", "message": "Invalid data"}), 400
 
+@app.route('/update_group_avatar', methods=['POST'])
+def update_group_avatar():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    group_id = data.get('group_id')
+    avatar_url = data.get('avatar_url')
+    if group_id and avatar_url:
+        try:
+            result = MiBaseDatos.grupos.update_one(
+                {"_id": group_id},
+                {"$set": {"profile_pic": avatar_url}}
+            )
+            if result.modified_count == 1:
+                return jsonify({"status": "success"}), 200
+            else:
+                return jsonify({"status": "error", "message": "No se pudo actualizar el avatar del grupo"}), 500
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Invalid data"}), 400
+
+@app.route('/start_videochat', methods=['POST'])
+def start_videochat():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    receiver_id = data.get('receiver_id')
+    if not receiver_id:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    room_id = str(ObjectId())
+    try:
+        MiBaseDatos.salas.insert_one({
+            "_id": room_id,
+            "caller": session['user_id'],
+            "receiver": receiver_id,
+            "status": "pending"
+        })
+        socketio.emit('videochat_request', {"room_id": room_id, "caller": session['user_id']}, room=receiver_id)
+        return jsonify({"status": "success", "room_id": room_id}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/accept_videochat', methods=['POST'])
+def accept_videochat():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    data = request.json
+    room_id = data.get('room_id')
+    if not room_id:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+    try:
+        # Corregido: No usar ObjectId ya que room_id ya es un string
+        result = MiBaseDatos.salas.update_one(
+            {"_id": room_id, "receiver": session['user_id']},
+            {"$set": {"status": "received"}}
+        )
+        if result.modified_count == 1:
+            room = MiBaseDatos.salas.find_one({"_id": room_id})
+            socketio.emit('videochat_accepted', {"room_id": room_id}, room=room['caller'])
+            return jsonify({"status": "success"}), 200
+        else:
+            return jsonify({"status": "error", "message": "No se pudo aceptar la videollamada"}), 500
+    except Exception as e:
+        print(f"Error en accept_videochat: {e}")  # Log para depuración
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# Nueva ruta para obtener información de la sala
+@app.route('/get_room_info/<room_id>', methods=['GET'])
+def get_room_info(room_id):
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    
+    try:
+        room = MiBaseDatos.salas.find_one({"_id": room_id})
+        
+        if room:
+            return jsonify({
+                "status": "success", 
+                "caller": room['caller'], 
+                "receiver": room['receiver'],
+                "room_status": room['status']
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Sala no encontrada"}), 404
+    except Exception as e:
+        print(f"Error en get_room_info: {e}")  # Log para depuración
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @socketio.on('connect')
 def handle_connect():
@@ -285,14 +394,9 @@ def handle_send_message(data):
     receiver = data.get('receiver')
     message_type = data.get('type')
     message_content = data.get('message')
-
-    
-    socketio.emit('play_sound', {"receiver": receiver}, room=receiver)
-    print(f"Evento 'play_sound' emitido para {receiver}")
-
     if sender and receiver and message_content:
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-        message_id = str(MiBaseDatos.mensajes.count_documents({}) + 1).zfill(4)
+        message_id = str(ObjectId()) # Generar un ObjectId único
         try:
             message = {
                 "_id": message_id,
@@ -304,23 +408,103 @@ def handle_send_message(data):
                 "read_by": []
             }
             MiBaseDatos.mensajes.insert_one(message)
-            socketio.emit('new_message', message, room=receiver)
-            return jsonify({"status": "success"}), 200
         except Exception as e:
             print(f"Error sending message: {e}")
-            return jsonify({"status": "error", "message": str(e)}), 500
-    return jsonify({"status": "error", "message": "Invalid data"}), 400
-
+            
+            #funcion play_sound
+            emit('play_sound', {"receiver": receiver}, room=receiver)
+            print(f"Evento 'play_sound' emitido para {receiver}")
+         
+         
 def watch_messages():
-    with MiBaseDatos.mensajes.watch() as stream:
+    with app.app_context(): #Añadido.
+        with MiBaseDatos.mensajes.watch() as stream:
+            for change in stream:
+                if change['operationType'] == 'insert':
+                    message = change['fullDocument']
+                    if message.get('type') == 'group':
+                        socketio.emit('new_message', message, room=message['receiver'])
+                    else:
+                        sender = message['sender']
+                        receiver = message['receiver']
+                        socketio.emit('new_message', message, room=receiver)
+                        socketio.emit('new_message', message, room=sender)
+                        socketio.emit('play_sound', {"receiver": receiver}, room=receiver)
+                    #funcion play_sound
+                    #emit('play_sound', {"receiver": message['receiver']}, room=message['receiver'])
+                    
+@app.route('/register_peer_id/<room_id>/<peer_id>', methods=['POST'])
+def register_peer_id(room_id, peer_id):
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"status": "error", "message": "No hay sesión activa"})
+        
+        # Obtener la sala
+        room = MiBaseDatos.salas.find_one({"_id": room_id})
+        if not room:
+            return jsonify({"status": "error", "message": "Sala no encontrada"})
+        
+        # Verificar que el usuario pertenezca a la sala
+        if user_id != room['caller'] and user_id != room['receiver']:
+            return jsonify({"status": "error", "message": "No tienes permiso para acceder a esta sala"})
+        
+        # Determinar si es caller o receiver
+        field_to_update = "caller_peer_id" if user_id == room['caller'] else "receiver_peer_id"
+        
+        # Actualizar el ID de peer en la sala
+        MiBaseDatos.salas.update_one(
+            {"_id": room_id},
+            {"$set": {field_to_update: peer_id}}
+        )
+        
+        return jsonify({"status": "success", "message": "ID de peer registrado correctamente"})
+    except Exception as e:
+        print(f"Error al registrar peer ID: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/get_peer_id/<room_id>', methods=['GET'])
+def get_peer_id(room_id):
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"status": "error", "message": "No hay sesión activa"})
+        
+        # Obtener la sala
+        room = MiBaseDatos.salas.find_one({"_id": room_id})
+        if not room:
+            return jsonify({"status": "error", "message": "Sala no encontrada"})
+        
+        # Verificar que el usuario pertenezca a la sala
+        if user_id != room['caller'] and user_id != room['receiver']:
+            return jsonify({"status": "error", "message": "No tienes permiso para acceder a esta sala"})
+        
+        # Determinar el ID del peer del otro usuario
+        other_peer_id = room.get('receiver_peer_id') if user_id == room['caller'] else room.get('caller_peer_id')
+        
+        if not other_peer_id:
+            return jsonify({"status": "waiting", "message": "El otro usuario aún no se ha conectado"})
+        
+        return jsonify({"status": "success", "peer_id": other_peer_id})
+    except Exception as e:
+        print(f"Error al obtener peer ID: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+def watch_videochat_requests():
+    with MiBaseDatos.salas.watch() as stream:
         for change in stream:
-            if change['operationType'] == 'insert':
-                message = change['fullDocument']
-                if message.get('type') == 'group':
-                    socketio.emit('new_message', message, room=message['receiver'])
-                else:
-                    socketio.emit('new_message', message, room=message['receiver']) #Emitir solo a receiver
-                    socketio.emit('play_sound', {"receiver": message['receiver']}, room=message['receiver'])
+            try:
+                if change['operationType'] == 'update' and change['updateDescription']['updatedFields'].get('status') == 'received':
+                    # Obtener el documento completo después de la actualización
+                    room_id = change['documentKey']['_id']
+                    room = MiBaseDatos.salas.find_one({"_id": room_id})
+                    
+                    if room:
+                        socketio.emit('videochat_start', {"room_id": room['_id']}, room=room['caller'])
+                        socketio.emit('videochat_start', {"room_id": room['_id']}, room=room['receiver'])
+                        print(f"Videochat iniciado entre {room['caller']} y {room['receiver']}")
+            except Exception as e:
+                print(f"Error en watch_videochat_requests: {e}")
 
 uri = os.getenv('MONGO_URI')
 client = MongoClient(uri)
@@ -345,6 +529,9 @@ if 'contactos' not in MiBaseDatos.list_collection_names():
 if 'grupos' not in MiBaseDatos.list_collection_names():
     MiBaseDatos.create_collection('grupos')
 
+if 'salas' not in MiBaseDatos.list_collection_names():
+    MiBaseDatos.create_collection('salas')
+
 print(MiBaseDatos)
 print(MiBaseDatos.list_collection_names())
 
@@ -353,5 +540,6 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
     watcher_thread = Thread(target=watch_messages)
     watcher_thread.start()
+    videochat_watcher_thread = Thread(target=watch_videochat_requests)
+    videochat_watcher_thread.start()
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
-
