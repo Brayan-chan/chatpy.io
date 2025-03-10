@@ -649,10 +649,15 @@
         // Al abrir el chat se resetea el badge
         chatItem.querySelector('.unread-badge').textContent = '0';
         loadMessagesWith(contact._id);
+        // Cerrar la barra lateral en dispositivos móviles
+        if (window.innerWidth <= 768) {
+          chatSidebar.classList.remove('active');
+        }
       });
       chatList.appendChild(chatItem);
     }
 
+    // Agregar item de grupo a la lista de chats
     // Agregar item de grupo a la lista de chats
     function addGroupChatItem(group) {
       const chatList = document.querySelector('.chat-list');
@@ -663,14 +668,14 @@
       chatItem.className = 'chat-item';
       chatItem.dataset.id = group._id;
       chatItem.innerHTML = `
-        <div class="avatar">
-          <img src="${group.profile_pic}" alt="${group.group_name}">
-        </div>
-        <div class="chat-name">${group.group_name}</div>
-        <div class="chat-info"><span></span></div>
-        <div class="chat-time"></div>
-        <div class="unread-badge">0</div>
-      `;
+    <div class="avatar">
+      <img src="${group.profile_pic}" alt="${group.group_name}">
+    </div>
+    <div class="chat-name">${group.group_name}</div>
+    <div class="chat-info"><span></span></div>
+    <div class="chat-time"></div>
+    <div class="unread-badge">0</div>
+  `;
       chatItem.addEventListener('click', () => {
         currentChatUserId = group._id;
         currentChatType = 'group';
@@ -679,6 +684,10 @@
         document.getElementById('chat-avatar').src = group.profile_pic;
         chatItem.querySelector('.unread-badge').textContent = '0';
         loadGroupMessages(group._id);
+        // Cerrar la barra lateral en dispositivos móviles
+        if (window.innerWidth <= 768) {
+          chatSidebar.classList.remove('active');
+        }
       });
       chatList.appendChild(chatItem);
     }
