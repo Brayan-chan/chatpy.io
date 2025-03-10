@@ -58,6 +58,10 @@
       .fa-sign-out-alt {
         color: rgb(223, 19, 19);
       }
+
+      .mobile {
+        display: block !important;
+      }
     }
 
     .mobile-nav {
@@ -125,10 +129,6 @@
               Cerrar sesión
             </a>
           </div>
-          <div id="logout-mobile" class="hidden">
-            <i class="fas fa-sign-out-alt"></i>
-            Cerrar sesión
-          </div>
         </div>
         <!-- Este div sirve para cargar y mostrar la imagen del usuario -->
         <div class="user-avatar">
@@ -149,7 +149,12 @@
           <button class="action-button" id="create-group-button">
             <i class="fas fa-users"></i>
           </button>
-          <button class="action-button mobile-only-button" onclick="window.location.href='/logout'">
+          <div class="user-avatar mobile hidden">
+            <a id="upload-avatar-link" class="action-button" href="javascript:void(0);">
+              <img id="user-avatar-img" src="{{ user.profile_pic }}" alt="Tú">
+            </a>
+          </div>
+          <button class="action-button mobile-only-button mobile hidden" onclick="window.location.href='/logout'">
             <i class="fas fa-sign-out-alt"></i>
           </button>
           <button class="mobile-menu-button hidden md:hidden" id="close-sidebar-button">
