@@ -132,8 +132,8 @@
         </div>
         <!-- Este div sirve para cargar y mostrar la imagen del usuario -->
         <div class="user-avatar">
-          <a id="upload-avatar-link" class="action-button" href="javascript:void(0);">
-            <img id="user-avatar-img" src="{{ user.profile_pic }}" alt="Tú">
+          <a id="upload-avatar-link-nav" class="action-button" href="javascript:void(0);">
+            <img id="user-avatar-img-nav" src="{{ user.profile_pic }}" alt="Tú">
           </a>
         </div>
       </div>
@@ -150,8 +150,8 @@
             <i class="fas fa-users"></i>
           </button>
           <div class="user-avatar mobile hidden">
-            <a id="upload-avatar-link" class="action-button" href="javascript:void(0);">
-              <img id="user-avatar-img" src="{{ user.profile_pic }}" alt="Tú">
+            <a id="upload-avatar-link-mobile" class="action-button" href="javascript:void(0);">
+              <img id="user-avatar-img-mobile" src="{{ user.profile_pic }}" alt="Tú">
             </a>
           </div>
           <button class="action-button mobile-only-button mobile hidden" onclick="window.location.href='/logout'">
@@ -894,7 +894,7 @@
     const CLOUDINARY_CLOUD_NAME = 'dmyejrbs7';
     const CLOUDINARY_UPLOAD_PRESET = 'apuntes';
 
-    document.getElementById('upload-avatar-link').addEventListener('click', function () {
+    function openCloudinaryUploader() {
       cloudinary.openUploadWidget({
         cloudName: CLOUDINARY_CLOUD_NAME,
         uploadPreset: CLOUDINARY_UPLOAD_PRESET,
@@ -920,7 +920,14 @@
             .then(response => response.json())
             .then(data => {
               if (data.status === 'success') {
-                document.getElementById('user-avatar-img').src = imageUrl;
+                // Actualizar todas las imágenes de avatar
+                document.getElementById('user-avatar-img-nav').src = imageUrl;
+
+                // Verificar si existe el elemento móvil antes de actualizarlo
+                const mobileAvatar = document.getElementById('user-avatar-img-mobile');
+                if (mobileAvatar) {
+                  mobileAvatar.src = imageUrl;
+                }
               } else {
                 alert('Error al actualizar el avatar: ' + data.message);
               }
@@ -928,7 +935,19 @@
             .catch(error => console.error('Error:', error));
         }
       });
-    });
+    }
+
+    // Asignar el evento al botón de la barra lateral
+    const navAvatarLink = document.getElementById('upload-avatar-link-nav');
+    if (navAvatarLink) {
+      navAvatarLink.addEventListener('click', openCloudinaryUploader);
+    }
+
+    // Asignar el evento al botón móvil
+    const mobileAvatarLink = document.getElementById('upload-avatar-link-mobile');
+    if (mobileAvatarLink) {
+      mobileAvatarLink.addEventListener('click', openCloudinaryUploader);
+    }
 
     const groupSettingsButton = document.getElementById('group-settings-button');
     const updateGroupAvatarModal = document.getElementById('update-group-avatar-modal');
