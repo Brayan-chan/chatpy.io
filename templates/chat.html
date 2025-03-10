@@ -40,6 +40,24 @@
       .mobile-nav {
         display: flex !important;
       }
+
+      #emoji-picker-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 50;
+        display: none;
+      }
+
+      .message-input-container {
+        position: relative;
+        z-index: 1;
+      }
+
+      .fa-sign-out-alt {
+        color: rgb(223, 19, 19);
+      }
     }
 
     .mobile-nav {
@@ -107,6 +125,10 @@
               Cerrar sesión
             </a>
           </div>
+          <div id="logout-mobile" class="hidden">
+            <i class="fas fa-sign-out-alt"></i>
+            Cerrar sesión
+          </div>
         </div>
         <!-- Este div sirve para cargar y mostrar la imagen del usuario -->
         <div class="user-avatar">
@@ -127,8 +149,8 @@
           <button class="action-button" id="create-group-button">
             <i class="fas fa-users"></i>
           </button>
-          <button class="action-button">
-            <i class="fas fa-ellipsis-v"></i>
+          <button class="action-button mobile-only-button" onclick="window.location.href='/logout'">
+            <i class="fas fa-sign-out-alt"></i>
           </button>
           <button class="mobile-menu-button hidden md:hidden" id="close-sidebar-button">
             <i class="fas fa-times"></i>
@@ -657,7 +679,6 @@
       chatList.appendChild(chatItem);
     }
 
-    // Agregar item de grupo a la lista de chats
     // Agregar item de grupo a la lista de chats
     function addGroupChatItem(group) {
       const chatList = document.querySelector('.chat-list');
