@@ -285,6 +285,17 @@
   <script>
     const socket = io();
     let currentRoomId = null;
+    let notificationsEnabled = true;
+
+    function playNotificationSound() {
+      if (!notificationsEnabled) return; // No reproducir si las notificaciones están desactivadas
+
+      const notificationSound = document.getElementById('notification-sound');
+      notificationSound.currentTime = 0; // Reiniciar el sonido
+      notificationSound.play().catch(error => {
+        console.error('Error al reproducir el sonido de notificación:', error);
+      });
+    }
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -297,6 +308,7 @@
     socket.on('videochat_request', (data) => {
       currentRoomId = data.room_id;
       document.getElementById('videochat-notification').style.display = 'flex';
+      playNotificationSound(); // Reproducir sonido de notificación
     });
 
     socket.on('videochat_start', (data) => {
@@ -312,17 +324,17 @@
           },
           body: JSON.stringify({ receiver_id: currentChatUserId })
         })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            console.log('Videollamada iniciada, room_id:', data.room_id);
-            // Redirigir a la página de videochat con el room_id
-            window.open(`/videochat?room_id=${data.room_id}`, '_blank');
-          } else {
-            console.error('Error al iniciar videollamada:', data.message);
-          }
-        })
-        .catch(error => console.error('Error:', error));
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              console.log('Videollamada iniciada, room_id:', data.room_id);
+              // Redirigir a la página de videochat con el room_id
+              window.open(`/videochat?room_id=${data.room_id}`, '_blank');
+            } else {
+              console.error('Error al iniciar videollamada:', data.message);
+            }
+          })
+          .catch(error => console.error('Error:', error));
       } else {
         console.error('No hay un chat seleccionado');
         alert('Selecciona un chat primero para iniciar una videollamada');
@@ -338,20 +350,20 @@
           },
           body: JSON.stringify({ room_id: currentRoomId })
         })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            console.log('Videollamada aceptada');
-            document.getElementById('videochat-notification').style.display = 'none';
-            // Abrir en una nueva pestaña
-            window.open(`/videochat?room_id=${currentRoomId}`, '_blank');
-          } else {
-            console.error('Error al aceptar videollamada:', data.message);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-        });
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              console.log('Videollamada aceptada');
+              document.getElementById('videochat-notification').style.display = 'none';
+              // Abrir en una nueva pestaña
+              window.open(`/videochat?room_id=${currentRoomId}`, '_blank');
+            } else {
+              console.error('Error al aceptar videollamada:', data.message);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+          });
       }
     }
 
@@ -384,9 +396,9 @@
 
     // Cerrar sidebar al hacer clic fuera en móvil
     document.addEventListener('click', (e) => {
-      if (window.innerWidth <= 768 && 
-          !chatSidebar.contains(e.target) && 
-          !mobileMenuButton.contains(e.target)) {
+      if (window.innerWidth <= 768 &&
+        !chatSidebar.contains(e.target) &&
+        !mobileMenuButton.contains(e.target)) {
         chatSidebar.classList.remove('active');
       }
     });
@@ -428,11 +440,16 @@
     // Manejo de nuevos mensajes: se muestran si corresponden al chat activo, y si no, se actualiza el badge
     socket.on('new_message', (data) => {
       const { sender, receiver, message, type } = data;
+
+      // Determinar si debemos reproducir el sonido (solo si el mensaje no es del usuario actual)
+      const shouldPlaySound = sender !== sessionUserId;
+
       if (type === 'group') {
         if (currentChatType === 'group' && receiver === currentChatUserId) {
           addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received');
         } else {
           updateUnreadBadge(receiver);
+          if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
         }
       } else {
         // Mensaje privado
@@ -441,6 +458,7 @@
         } else {
           const chatId = (sender === sessionUserId) ? receiver : sender;
           updateUnreadBadge(chatId);
+          if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
         }
       }
     });
@@ -583,6 +601,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      // Cargar la preferencia de notificaciones guardada
+      const savedNotificationPreference = localStorage.getItem('notificationsEnabled');
+      if (savedNotificationPreference !== null) {
+        notificationsEnabled = savedNotificationPreference === 'true';
+      }
       const messagesContainer = document.querySelector('.messages-container');
       const scrollButton = document.createElement('button');
       scrollButton.className = 'scroll-bottom-button';
@@ -934,6 +957,9 @@
       });
     }
   </script>
+  <audio id="notification-sound" preload="auto">
+    <source src="../static/notifications/notification.mp3" type="audio/mpeg">
+  </audio>
 </body>
 
 </html>
