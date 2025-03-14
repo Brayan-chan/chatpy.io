@@ -30,19 +30,22 @@ def send_message():
     receiver = data.get('receiver')
     message_type = data.get('type')
     message_content = data.get('message')
-    if sender and receiver and message_content:
+    audio_url = data.get('audio_url')  # Nuevo campo para el enlace de audio
+    if sender and receiver and (message_content or audio_url):
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
         message_id = str(ObjectId())
         try:
-            MiBaseDatos.mensajes.insert_one({
+            message = {
                 "_id": message_id,
                 "sender": sender,
                 "receiver": receiver,
                 "type": message_type,
                 "message": message_content,
+                "audio_url": audio_url,  # Guardar el enlace de audio
                 "sent_at": timestamp,
                 "read_by": []
-            })
+            }
+            MiBaseDatos.mensajes.insert_one(message)
             return jsonify({"status": "success"}), 200
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -365,6 +368,31 @@ def get_room_info(room_id):
     except Exception as e:
         print(f"Error en get_room_info: {e}")  # Log para depuración
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/get_api_key_aws', methods=['GET'])
+def get_api_key_aws():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    get_api_key_aws = os.getenv('API_KEY')
+    if api_key:
+        return jsonify({"status": "success", "api_key": api_key}), 200
+    return jsonify({"status": "error", "message": "API key not found"}), 500
+
+@app.route('/get_aws_credentials', methods=['GET'])
+def get_aws_credentials():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    access_key = os.getenv('accessKeyId')
+    secret_key = os.getenv('secretAccessKey')
+    s3_bucket = os.getenv('S3_BUCKET_NAME')
+    if access_key and secret_key and s3_bucket:
+        return jsonify({
+            "status": "success",
+            "access_key": access_key,
+            "secret_key": secret_key,
+            "s3_bucket": s3_bucket
+        }), 200
+    return jsonify({"status": "error", "message": "AWS credentials not found"}), 500
 
 @socketio.on('connect')
 def handle_connect():
@@ -393,7 +421,8 @@ def handle_send_message(data):
     receiver = data.get('receiver')
     message_type = data.get('type')
     message_content = data.get('message')
-    if sender and receiver and message_content:
+    audio_url = data.get('audio_url')  # Nuevo campo para el enlace de audio
+    if sender and receiver and (message_content or audio_url):
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
         message_id = str(ObjectId()) # Generar un ObjectId único
         try:
@@ -403,10 +432,15 @@ def handle_send_message(data):
                 "receiver": receiver,
                 "type": message_type,
                 "message": message_content,
+                "audio_url": audio_url,  # Guardar el enlace de audio
                 "sent_at": timestamp,
                 "read_by": []
             }
             MiBaseDatos.mensajes.insert_one(message)
+            if message_type == 'group':
+                socketio.emit('new_message', message, room=message['receiver'])
+            else:
+                socketio.emit('new_message', message, room=receiver)
         except Exception as e:
             print(f"Error sending message: {e}")
 
