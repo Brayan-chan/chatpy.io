@@ -205,6 +205,9 @@
           <button class="action-button" id="group-settings-button">
             <i class="fas fa-ellipsis-v"></i>
           </button>
+          <button class="action-button ml-2" id="context-button">
+            <i class="fas fa-info-circle"></i>
+          </button>
         </div>
       </header>
 
@@ -286,6 +289,20 @@
     </div>
   </div>
 
+  <!-- Modal para contexto de conversación -->
+  <div id="context-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-button">&times;</span>
+      <h2>Resumen del contexto del chat</h2>
+      <div id="context-summary" class="p-4"></div>
+      <div class="flex justify-end mt-4">
+        <button id="insert-context-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Insertar en el chat
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Template para enviar mensajes -->
   <template id="message-template-sent">
     <div class="message sent">
@@ -307,6 +324,226 @@
       </div>
     </div>
   </template>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/generative-ai": "https://esm.run/@google/generative-ai"
+      }
+    }
+  </script>
+  <script type="module">
+    import { GoogleGenerativeAI } from "@google/generative-ai";
+
+    let genai;
+
+    // Funcio para inicializar la API de Gemini
+    async function initializeGenAI() {
+      try {
+        const response = await fetch('/get_api_key');
+        const data = await response.json();
+        if (data.status === 'success') {
+          const API_KEY = data.api_key;
+          genai = new GoogleGenerativeAI(API_KEY);
+          console.log('Gemini API initialized successfully');
+        } else {
+          console.error('Error fetching API key:', data.message);
+        }
+      } catch (error) {
+        console.error('Error initializing Gemini API:', error);
+      }
+    }
+    
+    // Inicializar la API de Gemini
+    initializeGenAI();
+
+    // Función para obtener el resumen del contexto
+    async function getMessageContextSummary(messages) {
+      try {
+        if (!genai) {
+          console.error('API de Gemini no inicializada');
+          return 'No se pudo generar el resumen: API no inicializada.';
+        }
+
+        // Formateamos los mensajes para el prompt
+        const formattedMessages = messages.map(m => `${m.sender}: ${m.content}`).join('\n');
+
+        // Creamos el modelo generativo
+        const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        // Creaamos el formato correcto del prompt
+        const prompt = {
+          contents: [{
+            parts: [{ text: `Resume la siguiente conversación de chat. Enfócate en los temas principales y puntos clave discutidos. Responde en español:\n\n${formattedMessages}` }]
+          }]
+        };
+
+        // Generar contenido con el formato correcto
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      } catch (error) {
+        console.error('Error al obtener el resumen del contexto:', error);
+        return `No se pudo generar el resumen en este momento. Error: ${error.message}`;
+      }
+    }
+
+    // Obtener referencias a elementos del DOM
+    const headerRight = document.querySelector('.header-right');
+    const contextButton = document.getElementById('context-button');
+    contextButton.title = 'Get chat context';
+
+    // Crear el modal de contexto
+    const contextModal = document.getElementById('context-modal');
+
+    // Agregar botón de insertar en el chat
+    const insertContextButton = document.getElementById('insert-context-button');
+    let currentContextSummary = '';
+
+    // Modificar la función que maneja el botón de contexto para guardar el resumen
+    contextButton.addEventListener('click', async () => {
+      const contactId = currentChatUserId;
+      if (!contactId) {
+        alert('Selecciona un chat primero para obtener el resumen del contexto');
+        return;
+      }
+
+      contextModal.style.display = 'block';
+      const summaryElement = document.getElementById('context-summary');
+      summaryElement.textContent = 'Generando resumen...';
+      currentContextSummary = ''; // Reiniciar el resumen actual
+
+      try {
+        const response = await fetch(`/get_latest_messages?contact_id=${contactId}`);
+        const data = await response.json();
+        if (data.status === 'success' && data.messages && data.messages.length > 0) {
+          // Formatear los mensajes para Gemini
+          const messages = data.messages.map(m => ({
+            sender: m.sender,
+            content: m.message
+          }));
+
+          // Invertir el orden para que estén en orden cronológico (los más antiguos primero)
+          messages.reverse();
+
+          if (messages.length === 0) {
+            summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
+            return;
+          }
+
+          const summary = await getMessageContextSummary(messages);
+          summaryElement.innerHTML = summary.replace(/\n/g, '<br>'); // Convertir saltos de línea a <br>
+          currentContextSummary = summary; // Guardar el resumen para usarlo después
+        } else {
+          summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
+        }
+      } catch (error) {
+        console.error('Error al obtener los mensajes:', error);
+        summaryElement.textContent = 'Error al obtener los mensajes: ' + error.message;
+      }
+    });
+
+    // Agregar manejador de eventos para el botón de insertar
+    insertContextButton.addEventListener('click', () => {
+      if (!currentContextSummary || !currentChatUserId) {
+        alert('No hay un resumen disponible para insertar o no hay un chat seleccionado');
+        return;
+      }
+
+      // Enviar el resumen como un mensaje de tipo "ai"
+      sendAIMessage(currentContextSummary);
+
+      // Cerrar el modal
+      contextModal.style.display = 'none';
+    });
+
+    // Función para enviar un mensaje como si fuera de la IA
+    function sendAIMessage(message) {
+      if (message.trim() !== '' && currentChatUserId) {
+        const data = {
+          sender: 'ai', // Usamos 'ai' como remitente especial
+          receiver: currentChatUserId,
+          type: currentChatType,
+          message: message,
+          is_ai: true // Marcamos que es un mensaje de IA
+        };
+
+        // Enviar el mensaje al servidor
+        fetch('/send_ai_message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              // Mostrar el mensaje en el chat como recibido
+              addMessageToChat('Asistente IA', message, 'received', null, 'https://storage.googleapis.com/gweb-uniblog-publish-prod/images/IO24_WhatsInAName_Hero_1.width-1200.format-webp.webp');
+            } else {
+              console.error('Error al enviar mensaje de IA:', data.message);
+            }
+          })
+          .catch(error => console.error('Error:', error));
+      }
+    }
+
+    // Actualizar el manejador de eventos del botón de contexto
+    contextButton.addEventListener('click', async () => {
+      const contactId = currentChatUserId;
+      if (!contactId) {
+        alert('Selecciona un chat primero para obtener el resumen del contexto');
+        return;
+      }
+
+      contextModal.style.display = 'block';
+      const summaryElement = document.getElementById('context-summary');
+      summaryElement.textContent = 'Generando resumen...';
+
+      try {
+        // Obtenemos los ultimos mensajes del chat
+        const response = await fetch(`/get_latest_messages?contact_id=${contactId}`);
+        const data = await response.json();
+        if (data.status === 'success' && data.messages && data.messages.length > 0) {
+          // Formatear los mensajes para Gemini
+          const messages = data.messages.map(m => ({
+            sender: m.sender,
+            content: m.message
+          }));
+
+          // Invertir el orden para que estén en orden cronológico (los más antiguos primero)
+          messages.reverse();
+
+          if (messages.length === 0) {
+            summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
+            return;
+          }
+
+          const summary = await getMessageContextSummary(messages);
+          summaryElement.innerHTML = summary.replace(/\n/g, '<br>'); // Convertir saltos de línea a <br>
+        } else {
+          summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
+        }
+      } catch (error) {
+        console.error('Error al obtener los mensajes:', error);
+        summaryElement.textContent = 'Error al obtener los mensajes: ' + error.message;
+      }
+    });
+
+    // Agregamos un manejador de eventos al cerrar el modal
+    const closeContextModal = contextModal.querySelector('.close-button');
+    closeContextModal.addEventListener('click', () => {
+      contextModal.style.display = 'none';
+    });
+
+    // Asignamos un evento al modal para cerrarlo al hacer clic fuera de él
+    window.addEventListener('click', (event) => {
+      if (event.target === contextModal) {
+        contextModal.style.display = 'none';
+      }
+    });
+  </script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script>
@@ -529,17 +766,35 @@
         messageInput.focus();
       });
 
+    // Modificar la función addMessageToChat para manejar mensajes de IA
+    // Modificar la función addMessageToChat para manejar mensajes de IA
     function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null, avatar = '') {
       const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
       const template = document.getElementById(templateId).content.cloneNode(true);
+
       if (tipo === 'received') {
+        // Verificar si es un mensaje de IA
+        const isAI = nombre === 'Asistente IA';
+
+        // Establecer el nombre del remitente
         template.querySelector('strong').textContent = nombre;
+
+        // Establecer el avatar
         template.querySelector('.avatar img').src = avatar;
+
+        // Si es un mensaje de IA, agregar una clase especial para estilizarlo diferente
+        if (isAI) {
+          const messageElement = template.querySelector('.message.received');
+          messageElement.classList.add('ai-message');
+        }
       }
+
       const timeString = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
       template.querySelector('p').textContent = contenido;
       template.querySelector('.message-time').textContent = timeString;
+
       const messagesContainer = document.querySelector('.messages-container');
       messagesContainer.appendChild(template);
       scrollToBottom(messagesContainer);
@@ -553,9 +808,19 @@
             const messagesContainer = document.querySelector('.messages-container');
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
-              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+              // Determinar el tipo de mensaje (enviado, recibido o IA)
+              let msgType = 'received';
+              if (message.sender_id === sessionUserId) {
+                msgType = 'sent';
+              }
+
+              // Usar el avatar correcto para mensajes de IA
+              const avatar = message.is_ai ? message.sender_avatar : message.sender_avatar;
+
+              // Agregar el mensaje al chat
+              addMessageToChat(message.sender, message.message, msgType, message.sent_at, avatar);
             });
+
             // Actualizar el avatar y el título del chat
             const contact = data.contact;
             document.getElementById('chat-avatar').src = contact.profile_pic;
@@ -567,7 +832,6 @@
         })
         .catch(error => console.error('Error:', error));
     }
-
     function loadGroupMessages(groupId) {
       fetch(`/get_group_messages/${groupId}`)
         .then(response => response.json())

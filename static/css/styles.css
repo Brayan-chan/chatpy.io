@@ -580,3 +580,27 @@ body {
 .videochat-notification button:hover {
     background-color: #056162;
 }
+
+.message.received.ai-message {
+    background-color: #414b4f;
+    border-left: 3px solid #1890ff;
+  }
+  
+  .message.received.ai-message strong {
+    color: #1890ff; 
+  }
+  
+  /* Estilo para el botón de insertar contexto */
+  #insert-context-button {
+    background-color: #056162;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  #insert-context-button:hover {
+    background-color: #044e4f;
+  }

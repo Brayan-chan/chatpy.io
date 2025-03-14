@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, redirect, url_for, session
+from flask import Flask, request, render_template, jsonify, redirect, url_for, session, send_from_directory
 from flask_socketio import SocketIO, join_room, leave_room
 from pymongo.mongo_client import MongoClient
 from dotenv import load_dotenv
@@ -9,9 +9,13 @@ from pytz import timezone
 from bson import ObjectId
 
 load_dotenv('.env')
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')
 socketio = SocketIO(app)
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(app.static_folder, filename, mimetype='application/javascript')
 
 @app.route('/')
 def index():
@@ -124,18 +128,33 @@ def get_messages_with(contact_id):
     messages = list(MiBaseDatos.mensajes.find({
         "$or": [
             {"sender": user_id, "receiver": contact_id},
-            {"sender": contact_id, "receiver": user_id}
+            {"sender": contact_id, "receiver": user_id},
+            # Agregar condición para mensajes de IA dirigidos a este chat
+            {"sender": "ai_assistant", "receiver": contact_id}
         ]
     }))
     for message in messages:
         message['_id'] = str(message['_id'])
         utc_time = datetime.fromisoformat(message['sent_at'])
         local_time = utc_time.astimezone(timezone('America/Mexico_City'))
-        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
-        message['sender'] = sender['username']
-        message['sender_id'] = str(sender['_id'])
-        message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
+        
+        # Manejar mensajes de IA de forma especial
+        if message['sender'] == "ai_assistant":
+            message['sender'] = "Asistente IA"
+            message['sender_id'] = "ai_assistant"
+            message['sender_avatar'] = "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/IO24_WhatsInAName_Hero_1.width-1200.format-webp.webp"
+        else:
+            # Para mensajes normales, buscar el usuario en la base de datos
+            sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+            message['sender'] = sender['username']
+            message['sender_id'] = str(sender['_id'])
+            message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
+        
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Agregar flag para mensajes de IA
+        message['is_ai'] = message.get('is_ai', False) or message['sender_id'] == "ai_assistant"
+    
     contact = MiBaseDatos.usuarios.find_one({"_id": contact_id})
     contact['_id'] = str(contact['_id'])
     contact['profile_pic'] = contact.get('profile_pic', 'https://via.placeholder.com/150')
@@ -364,6 +383,96 @@ def get_room_info(room_id):
         print(f"Error en get_room_info: {e}")  # Log para depuración
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/get_latest_messages', methods=['GET'])
+def get_latest_messages():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = session['user_id']
+    contact_id = request.args.get('contact_id')
+    if not contact_id:
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
+
+    messages = list(MiBaseDatos.mensajes.find({
+        "$or": [
+            {"sender": user_id, "receiver": contact_id},
+            {"sender": contact_id, "receiver": user_id}
+        ]
+    }).sort("sent_at", -1).limit(10))  # Obtener los últimos 10 mensajes
+
+    for message in messages:
+        message['_id'] = str(message['_id'])
+        utc_time = datetime.fromisoformat(message['sent_at'])
+        local_time = utc_time.astimezone(timezone('America/Mexico_City'))
+        sender = MiBaseDatos.usuarios.find_one({"_id": message['sender']})
+        message['sender'] = sender['username']
+        message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+    return jsonify({"status": "success", "messages": messages}), 200
+
+@app.route('/get_api_key', methods=['GET'])
+def get_api_key():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    api_key = os.getenv('API_KEY')
+    if api_key:
+        return jsonify({"status": "success", "api_key": api_key}), 200
+    return jsonify({"status": "error", "message": "API key not found"}), 500
+
+@app.route('/send_ai_message', methods=['POST'])
+def send_ai_message():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    
+    data = request.json
+    receiver = data.get('receiver')
+    message_type = data.get('type')
+    message_content = data.get('message')
+    
+    if receiver and message_content:
+        timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
+        message_id = str(ObjectId())
+        
+        # Crear un remitente especial para la IA
+        ai_sender = {
+            "_id": "ai_assistant",
+            "username": "Asistente IA",
+            "profile_pic": "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/IO24_WhatsInAName_Hero_1.width-1200.format-webp.webp"
+        }
+        
+        try:
+            # Insertar el mensaje en la base de datos
+            MiBaseDatos.mensajes.insert_one({
+                "_id": message_id,
+                "sender": "ai_assistant",  # ID especial para la IA
+                "receiver": receiver,
+                "type": message_type,
+                "message": message_content,
+                "sent_at": timestamp,
+                "read_by": [],
+                "is_ai": True  # Marcar como mensaje de IA
+            })
+            
+            # Emitir el mensaje a través de Socket.IO
+            message = {
+                "_id": message_id,
+                "sender": "ai_assistant",
+                "sender_id": "ai_assistant",
+                "receiver": receiver,
+                "type": message_type,
+                "message": message_content,
+                "sent_at": timestamp,
+                "is_ai": True,
+                "sender_avatar": "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/IO24_WhatsInAName_Hero_1.width-1200.format-webp.webp"
+            }
+            
+            # Emitir solo al receptor
+            socketio.emit('new_message', message, room=receiver)
+            
+            return jsonify({"status": "success"}), 200
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    
+    return jsonify({"status": "error", "message": "Invalid data"}), 400
+
 @socketio.on('connect')
 def handle_connect():
     if 'user_id' in session:
@@ -525,9 +634,9 @@ print(MiBaseDatos.list_collection_names())
 
 if __name__ == '__main__':
     from threading import Thread
-    port = int(os.environ.get('PORT', 3000))
+    port = int(os.environ.get('PORT', 8080))
     watcher_thread = Thread(target=watch_messages)
     watcher_thread.start()
     videochat_watcher_thread = Thread(target=watch_videochat_requests)
     videochat_watcher_thread.start()
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port)
