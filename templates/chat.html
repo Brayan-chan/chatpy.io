@@ -1032,6 +1032,11 @@
     function grabarAudio() {
       const button = document.getElementById('grabar-audio');
 
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Tu navegador no soporta la grabación de audio. Por favor, usa un navegador compatible como Chrome o Firefox.');
+        return;
+      }
+
       if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
         button.innerHTML = '<i class="fas fa-microphone"></i>'; // Restaurar el ícono original
