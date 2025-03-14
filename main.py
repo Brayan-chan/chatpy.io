@@ -8,6 +8,8 @@ import os
 from pytz import timezone
 from bson import ObjectId
 
+# Esta es la versión antes de la prueba de despliegue en Render
+
 load_dotenv('.env')
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')
