@@ -12,6 +12,21 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1259.0.min.js"></script>
+  <!-- CSS de Fancybox -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- JS de Fancybox -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+
+  <!-- CSS de Plyr -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+  <!-- JS de Plyr -->
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <style>
     /* Estilos para dispositivos móviles */
     @media (max-width: 768px) {
@@ -225,7 +240,7 @@
         <button class="action-button" id="send-button">
           <i class="fas fa-paper-plane"></i>
         </button>
-        <button class="action-button" id="mic-button">
+        <button id="grabar-audio" class="action-button">
           <i class="fas fa-microphone"></i>
         </button>
       </div>
@@ -313,6 +328,8 @@
     const socket = io();
     let currentRoomId = null;
     let notificationsEnabled = true;
+    let s3; // Definir la variable s3
+    let S3_BUCKET_NAME; // Definir la variable S3_BUCKET_NAME
 
     function playNotificationSound() {
       if (!notificationsEnabled) return; // No reproducir si las notificaciones están desactivadas
@@ -464,16 +481,23 @@
       }
     });
 
+    // Lista para almacenar los IDs de los mensajes ya procesados
+    const processedMessageIds = new Set();
+
     // Manejo de nuevos mensajes: se muestran si corresponden al chat activo, y si no, se actualiza el badge
     socket.on('new_message', (data) => {
-      const { sender, receiver, message, type } = data;
+      const { sender, receiver, message, type, audio_url, _id, sender_avatar } = data;
 
       // Determinar si debemos reproducir el sonido (solo si el mensaje no es del usuario actual)
       const shouldPlaySound = sender !== sessionUserId;
 
       if (type === 'group') {
         if (currentChatType === 'group' && receiver === currentChatUserId) {
-          addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received');
+          if (audio_url) {
+            addAudioMessageToChat(sender, audio_url, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
+          } else {
+            addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
+          }
         } else {
           updateUnreadBadge(receiver);
           if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
@@ -481,7 +505,11 @@
       } else {
         // Mensaje privado
         if (currentChatType === 'private' && (sender === currentChatUserId || receiver === currentChatUserId)) {
-          addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received');
+          if (audio_url) {
+            addAudioMessageToChat(sender, audio_url, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
+          } else {
+            addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
+          }
         } else {
           const chatId = (sender === sessionUserId) ? receiver : sender;
           updateUnreadBadge(chatId);
@@ -545,6 +573,35 @@
       scrollToBottom(messagesContainer);
     }
 
+    function addAudioMessageToChat(nombre, audioUrl, tipo = 'received', timestamp = null, avatar = '', messageId = null) {
+      // Verificar si el mensaje ya ha sido procesado
+      if (messageId && processedMessageIds.has(messageId)) {
+        return;
+      }
+
+      const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
+      const template = document.getElementById(templateId).content.cloneNode(true);
+      if (tipo === 'received') {
+        template.querySelector('strong').textContent = nombre;
+        template.querySelector('.avatar img').src = avatar;
+      }
+      const timeString = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const audioElement = document.createElement('audio');
+      audioElement.src = audioUrl;
+      audioElement.controls = true;
+      template.querySelector('p').replaceWith(audioElement);
+      template.querySelector('.message-time').textContent = timeString;
+      const messagesContainer = document.querySelector('.messages-container');
+      messagesContainer.appendChild(template);
+      scrollToBottom(messagesContainer);
+
+      // Agregar el ID del mensaje a la lista de procesados
+      if (messageId) {
+        processedMessageIds.add(messageId);
+      }
+    }
+
     function loadMessagesWith(contactId) {
       fetch(`/get_messages_with/${contactId}`)
         .then(response => response.json())
@@ -554,7 +611,11 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+              if (message.audio_url) {
+                addAudioMessageToChat(message.sender, message.audio_url, msgType, message.sent_at, message.sender_avatar);
+              } else {
+                addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+              }
             });
             // Actualizar el avatar y el título del chat
             const contact = data.contact;
@@ -577,7 +638,11 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+              if (message.audio_url) {
+                addAudioMessageToChat(message.sender, message.audio_url, msgType, message.sent_at, message.sender_avatar);
+              } else {
+                addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+              }
             });
             // Actualizar el avatar y el título del grupo
             const group = data.group;
@@ -651,6 +716,7 @@
 
       loadContacts();
       loadGroups();
+      getAWSCredentials();
     });
 
     // Agregar item de contacto a la lista de chats (se asigna data-id)
@@ -894,6 +960,11 @@
     const CLOUDINARY_CLOUD_NAME = 'dmyejrbs7';
     const CLOUDINARY_UPLOAD_PRESET = 'apuntes';
 
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioUrl = null;
+    let audioBlob = null;
+
     function openCloudinaryUploader() {
       cloudinary.openUploadWidget({
         cloudName: CLOUDINARY_CLOUD_NAME,
@@ -935,6 +1006,71 @@
             .catch(error => console.error('Error:', error));
         }
       });
+    }
+
+    document.getElementById('grabar-audio').addEventListener('click', grabarAudio);
+
+    async function subirAudio(blob) {
+      const params = {
+        Bucket: S3_BUCKET_NAME,
+        Key: 'audios/' + Date.now() + '.webm',
+        Body: blob,
+        ContentType: 'audio/webm'
+      };
+
+      try {
+        const data = await s3.upload(params).promise();
+        console.log('Audio subido con éxito:', data.Location);
+        return data.Location;
+      } catch (error) {
+        console.error('Error al subir el audio:', error);
+        alert('Error al subir el audio. Por favor, revisa la consola para más detalles.');
+        return null;
+      }
+    }
+
+    function grabarAudio() {
+      const button = document.getElementById('grabar-audio');
+
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        button.innerHTML = '<i class="fas fa-microphone"></i>'; // Restaurar el ícono original
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start();
+          button.innerHTML = '<i class="fas fa-stop"></i>'; // Cambiar a ícono de detener
+
+          audioChunks = [];
+          mediaRecorder.addEventListener("dataavailable", event => {
+            audioChunks.push(event.data);
+          });
+
+          mediaRecorder.addEventListener("stop", async () => {
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = await subirAudio(blob);
+            if (audioUrl) {
+              const data = {
+                sender: sessionUserId,
+                receiver: currentChatUserId,
+                type: currentChatType,
+                audio_url: audioUrl
+              };
+              
+              // Enviar el mensaje a través de Socket.IO
+              socket.emit('send_message', data);
+              
+              // NO agregar el mensaje manualmente aquí, ya que llegará a través de Socket.IO
+              
+              // Detener todas las pistas del stream para liberar el micrófono
+              stream.getTracks().forEach(track => track.stop());
+            }
+          });
+        })
+        .catch(error => console.error('Error al grabar audio:', error));
     }
 
     // Asignar el evento al botón de la barra lateral
@@ -1009,6 +1145,27 @@
             .catch(error => console.error('Error:', error));
         }
       });
+    }
+
+    // Función para obtener las credenciales de AWS
+    function getAWSCredentials() {
+      fetch('/get_aws_credentials')
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            AWS.config.update({
+              accessKeyId: data.access_key,
+              secretAccessKey: data.secret_key,
+              region: 'us-east-2' // Ejemplo: 'us-east-1'
+            });
+            S3_BUCKET_NAME = data.s3_bucket;
+            s3 = new AWS.S3(); // Inicializar la variable s3
+            console.log('Credenciales de AWS obtenidas con éxito');
+          } else {
+            console.error('Error al obtener credenciales de AWS:', data.message);
+          }
+        })
+        .catch(error => console.error('Error:', error));
     }
   </script>
   <audio id="notification-sound" preload="auto">
