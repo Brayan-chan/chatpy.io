@@ -639,4 +639,4 @@ if __name__ == '__main__':
     watcher_thread.start()
     videochat_watcher_thread = Thread(target=watch_videochat_requests)
     videochat_watcher_thread.start()
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
