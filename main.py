@@ -3,10 +3,12 @@ from flask_socketio import SocketIO, join_room, leave_room
 from pymongo.mongo_client import MongoClient
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
 from pytz import timezone
 from bson import ObjectId
+import boto3
 
 # Esta es la versión antes de la prueba de despliegue en Render
 
@@ -141,6 +143,12 @@ def get_messages_with(contact_id):
         message['sender_id'] = str(sender['_id'])
         message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Asegurarse de que file_url y file_type estén presentes si existen
+        if 'file_url' not in message:
+            message['file_url'] = None
+        if 'file_type' not in message:
+            message['file_type'] = None
     contact = MiBaseDatos.usuarios.find_one({"_id": contact_id})
     contact['_id'] = str(contact['_id'])
     contact['profile_pic'] = contact.get('profile_pic', 'https://via.placeholder.com/150')
@@ -161,9 +169,16 @@ def get_group_messages(group_id):
         message['sender_id'] = str(sender['_id'])
         message['sender_avatar'] = sender.get('profile_pic', 'https://via.placeholder.com/150')
         message['sent_at'] = local_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Asegurarse de que file_url y file_type estén presentes si existen
+        if 'file_url' not in message:
+            message['file_url'] = None
+        if 'file_type' not in message:
+            message['file_type'] = None
+            
     group = MiBaseDatos.grupos.find_one({"_id": group_id})
     group['_id'] = str(group['_id'])
-    group['profile_pic'] = 'https://via.placeholder.com/150?text=Grupo'
+    group['profile_pic'] = group.get('profile_pic', 'https://via.placeholder.com/150?text=Grupo')
     return jsonify({"status": "success", "messages": messages, "group": group}), 200
 
 @app.route('/add_contact', methods=['POST'])
@@ -394,6 +409,84 @@ def get_aws_credentials():
         }), 200
     return jsonify({"status": "error", "message": "AWS credentials not found"}), 500
 
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
+    if 'user_id' not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No file part"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"status": "error", "message": "No selected file"}), 400
+    
+    try:
+        # Generar un nombre único para el archivo
+        original_filename = file.filename
+        file_extension = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
+        
+        # Usar un ID más corto y añadir el nombre original del archivo
+        unique_id = str(ObjectId())[-8:] # Usar solo los últimos 8 caracteres del ID
+        safe_filename = secure_filename(original_filename)
+        unique_filename = f"files/{unique_id}_{safe_filename}"
+        
+        # Configurar S3
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=os.getenv('accessKeyId'),
+            aws_secret_access_key=os.getenv('secretAccessKey'),
+            region_name='us-east-2'  # Ajusta según tu región
+        )
+        
+        # Determinar el Content-Type adecuado
+        content_type = file.content_type
+        if content_type == 'application/octet-stream':
+            # Intentar determinar el tipo MIME basado en la extensión
+            mime_types = {
+                'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'pdf': 'application/pdf',
+                'zip': 'application/zip',
+                'rar': 'application/x-rar-compressed',
+                '7z': 'application/x-7z-compressed',
+                'exe': 'application/x-msdownload',
+                'py': 'text/x-python',
+                'js': 'text/javascript',
+                'html': 'text/html',
+                'css': 'text/css',
+                'json': 'application/json',
+                'xml': 'application/xml',
+            }
+            if file_extension in mime_types:
+                content_type = mime_types[file_extension]
+        
+        # Subir archivo a S3
+        s3.upload_fileobj(
+            file,
+            os.getenv('S3_BUCKET_NAME'),
+            unique_filename,
+            ExtraArgs={
+                'ContentType': content_type,
+                'ContentDisposition': f'attachment; filename="{original_filename}"'
+            }
+        )
+        
+        # Construir la URL del archivo
+        file_url = f"https://{os.getenv('S3_BUCKET_NAME')}.s3.amazonaws.com/{unique_filename}"
+        
+        return jsonify({
+            "status": "success",
+            "file_url": file_url,
+            "original_filename": original_filename
+        }), 200
+        
+    except Exception as e:
+        print(f"Error al subir archivo: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+       
 @socketio.on('connect')
 def handle_connect():
     if 'user_id' in session:
@@ -421,29 +514,44 @@ def handle_send_message(data):
     receiver = data.get('receiver')
     message_type = data.get('type')
     message_content = data.get('message')
-    audio_url = data.get('audio_url')  # Nuevo campo para el enlace de audio
-    if sender and receiver and (message_content or audio_url):
+    audio_url = data.get('audio_url')
+    file_url = data.get('file_url')
+    file_type = data.get('file_type')
+    
+    if sender and receiver and (message_content or audio_url or file_url):
         timestamp = datetime.utcnow().replace(tzinfo=timezone('UTC')).isoformat()
-        message_id = str(ObjectId()) # Generar un ObjectId único
+        message_id = str(ObjectId())
+        
         try:
             message = {
                 "_id": message_id,
                 "sender": sender,
+                "sender_id": sender,  # Asegurar que sender_id esté presente
                 "receiver": receiver,
                 "type": message_type,
                 "message": message_content,
-                "audio_url": audio_url,  # Guardar el enlace de audio
+                "audio_url": audio_url,
+                "file_url": file_url,
+                "file_type": file_type,
                 "sent_at": timestamp,
                 "read_by": []
             }
+            
             MiBaseDatos.mensajes.insert_one(message)
+            
+            # Obtener información del remitente para incluir el avatar
+            sender_info = MiBaseDatos.usuarios.find_one({"_id": sender})
+            if sender_info:
+                message["sender_avatar"] = sender_info.get("profile_pic", "")
+            
             if message_type == 'group':
                 socketio.emit('new_message', message, room=message['receiver'])
             else:
                 socketio.emit('new_message', message, room=receiver)
+                socketio.emit('new_message', message, room=sender)
         except Exception as e:
             print(f"Error sending message: {e}")
-
+                      
 def watch_messages():
     with MiBaseDatos.mensajes.watch() as stream:
         for change in stream:
