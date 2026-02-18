@@ -7,8 +7,15 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
   <title>chatpy.io</title>
   <link rel="stylesheet" href="../static/css/styles.css">
+  <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+  <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
   <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
+  <script src="https://unpkg.com/filepond-plugin-file-encode/dist/filepond-plugin-file-encode.js"></script>
+  <script
+    src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
+  <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
+  <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
@@ -227,8 +234,17 @@
         <!-- Mensajes se cargarán aquí -->
       </div>
 
+      <div id="file-upload-container"
+        style="display: none; padding: 10px; background-color: #2a2a2a; border-top: 1px solid #333;">
+        <input type="file" class="filepond" name="filepond" multiple>
+        <div class="upload-controls">
+          <button id="cancel-upload" class="action-button">Cancelar</button>
+          <button id="send-files" class="action-button">Enviar</button>
+        </div>
+      </div>
+
       <div class="message-input-container">
-        <button class="action-button">
+        <button class="action-button" id="file-button">
           <i class="fas fa-paperclip"></i>
         </button>
         <button class="action-button" id="emoji-button">
@@ -486,34 +502,42 @@
 
     // Manejo de nuevos mensajes: se muestran si corresponden al chat activo, y si no, se actualiza el badge
     socket.on('new_message', (data) => {
-      const { sender, receiver, message, type, audio_url, _id, sender_avatar } = data;
+      const { sender, sender_id, receiver, message, type, audio_url, file_url, file_type, _id, sender_avatar } = data;
+
+      // Determinar si el mensaje es enviado o recibido
+      const isSentByMe = sender_id === sessionUserId;
+      const msgType = isSentByMe ? 'sent' : 'received';
 
       // Determinar si debemos reproducir el sonido (solo si el mensaje no es del usuario actual)
-      const shouldPlaySound = sender !== sessionUserId;
+      const shouldPlaySound = !isSentByMe;
 
       if (type === 'group') {
         if (currentChatType === 'group' && receiver === currentChatUserId) {
           if (audio_url) {
-            addAudioMessageToChat(sender, audio_url, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
-          } else {
-            addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
+            addAudioMessageToChat(sender, audio_url, msgType, null, sender_avatar, _id);
+          } else if (file_url && file_type) {
+            addFileMessageToChat(sender, file_url, file_type, msgType, null, sender_avatar, _id);
+          } else if (message) {
+            addMessageToChat(sender, message, msgType, null, sender_avatar, _id);
           }
         } else {
           updateUnreadBadge(receiver);
-          if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
+          if (shouldPlaySound) playNotificationSound();
         }
       } else {
         // Mensaje privado
-        if (currentChatType === 'private' && (sender === currentChatUserId || receiver === currentChatUserId)) {
+        if (currentChatType === 'private' && (sender_id === currentChatUserId || receiver === currentChatUserId)) {
           if (audio_url) {
-            addAudioMessageToChat(sender, audio_url, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
-          } else {
-            addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received', null, sender_avatar, _id);
+            addAudioMessageToChat(sender, audio_url, msgType, null, sender_avatar, _id);
+          } else if (file_url && file_type) {
+            addFileMessageToChat(sender, file_url, file_type, msgType, null, sender_avatar, _id);
+          } else if (message) {
+            addMessageToChat(sender, message, msgType, null, sender_avatar, _id);
           }
         } else {
-          const chatId = (sender === sessionUserId) ? receiver : sender;
+          const chatId = isSentByMe ? receiver : sender_id;
           updateUnreadBadge(chatId);
-          if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
+          if (shouldPlaySound) playNotificationSound();
         }
       }
     });
@@ -611,12 +635,19 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
+
+              // Manejar diferentes tipos de mensajes
               if (message.audio_url) {
                 addAudioMessageToChat(message.sender, message.audio_url, msgType, message.sent_at, message.sender_avatar);
-              } else {
+              } else if (message.file_url && message.file_type) {
+                // Renderizar mensajes de archivo
+                addFileMessageToChat(message.sender, message.file_url, message.file_type, msgType, message.sent_at, message.sender_avatar);
+              } else if (message.message) {
+                // Mensajes de texto normales
                 addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
               }
             });
+
             // Actualizar el avatar y el título del chat
             const contact = data.contact;
             document.getElementById('chat-avatar').src = contact.profile_pic;
@@ -638,12 +669,19 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
+
+              // Manejar diferentes tipos de mensajes
               if (message.audio_url) {
                 addAudioMessageToChat(message.sender, message.audio_url, msgType, message.sent_at, message.sender_avatar);
-              } else {
+              } else if (message.file_url && message.file_type) {
+                // Renderizar mensajes de archivo
+                addFileMessageToChat(message.sender, message.file_url, message.file_type, msgType, message.sent_at, message.sender_avatar);
+              } else if (message.message) {
+                // Mensajes de texto normales
                 addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
               }
             });
+
             // Actualizar el avatar y el título del grupo
             const group = data.group;
             document.getElementById('chat-avatar').src = group.profile_pic || 'https://via.placeholder.com/150?text=Grupo';
@@ -693,6 +731,49 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      const fileButton = document.getElementById('file-button');
+      const fileUploadContainer = document.getElementById('file-upload-container');
+      const cancelUploadButton = document.getElementById('cancel-upload');
+      const sendFilesButton = document.getElementById('send-files');
+      let pond;
+
+      // Inicializar FilePond
+      pond = initializeFilePond();
+      // Mostrar/ocultar el contenedor de carga de archivos
+      fileButton.addEventListener('click', function () {
+        fileUploadContainer.style.display = fileUploadContainer.style.display === 'none' ? 'block' : 'none';
+      });
+
+      // Cancelar la carga de archivos
+      cancelUploadButton.addEventListener('click', function () {
+        pond.removeFiles();
+        fileUploadContainer.style.display = 'none';
+      });
+
+      // Enviar archivos
+      sendFilesButton.addEventListener('click', async function () {
+        const files = pond.getFiles();
+        if (files.length === 0) return;
+
+        // Mostrar indicador de carga
+        sendFilesButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        sendFilesButton.disabled = true;
+
+        // Subir archivos a S3
+        const fileUrls = await uploadFilesToS3(files);
+
+        // Enviar archivos en el chat
+        await sendFiles(fileUrls);
+
+        // Limpiar y ocultar el contenedor de carga
+        pond.removeFiles();
+        fileUploadContainer.style.display = 'none';
+
+        // Restaurar el botón
+        sendFilesButton.innerHTML = 'Enviar';
+        sendFilesButton.disabled = false;
+      });
+
       // Cargar la preferencia de notificaciones guardada
       const savedNotificationPreference = localStorage.getItem('notificationsEnabled');
       if (savedNotificationPreference !== null) {
@@ -1064,12 +1145,12 @@
                 type: currentChatType,
                 audio_url: audioUrl
               };
-              
+
               // Enviar el mensaje a través de Socket.IO
               socket.emit('send_message', data);
-              
+
               // NO agregar el mensaje manualmente aquí, ya que llegará a través de Socket.IO
-              
+
               // Detener todas las pistas del stream para liberar el micrófono
               stream.getTracks().forEach(track => track.stop());
             }
@@ -1172,6 +1253,279 @@
         })
         .catch(error => console.error('Error:', error));
     }
+
+    // Función para inicializar FilePond
+    // Función para inicializar FilePond con más tipos de archivos permitidos
+    function initializeFilePond() {
+      // Registrar plugins de FilePond
+      FilePond.registerPlugin(
+        FilePondPluginFileEncode,
+        FilePondPluginFileValidateType,
+        FilePondPluginImagePreview
+      );
+
+      // Crear instancia de FilePond
+      const pond = FilePond.create(document.querySelector('.filepond'), {
+        allowMultiple: true,
+        maxFiles: 5,
+        // Ampliar los tipos de archivos aceptados
+        acceptedFileTypes: [
+          'image/*',                                                  // Imágenes
+          'application/pdf',                                          // PDF
+          'application/msword',                                       // DOC
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+          'application/vnd.ms-powerpoint',                            // PPT
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+          'application/vnd.ms-excel',                                 // XLS
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+          'text/plain',                                               // TXT
+          'text/html',                                                // HTML
+          'text/css',                                                 // CSS
+          'text/javascript',                                          // JS
+          'application/json',                                         // JSON
+          'application/xml',                                          // XML
+          'application/zip',                                          // ZIP
+          'application/x-rar-compressed',                             // RAR
+          'application/x-7z-compressed',                              // 7Z
+          'application/x-msdownload',                                 // EXE
+          'application/x-sh',                                         // SH
+          'application/x-python',                                     // Python
+          'application/java-archive',                                 // JAR
+          'application/octet-stream'                                  // Binarios genéricos
+        ],
+        labelIdle: 'Arrastra y suelta archivos o <span class="filepond--label-action">Examinar</span>',
+        labelFileTypeNotAllowed: 'Tipo de archivo no válido',
+        fileValidateTypeLabelExpectedTypes: 'Se esperan archivos de tipo {allTypes}',
+        labelMaxFileSizeExceeded: 'El archivo es demasiado grande',
+        labelMaxFileSize: 'El tamaño máximo de archivo es {filesize}',
+        maxFileSize: '20MB' // Aumentar el tamaño máximo para archivos más grandes
+      });
+
+      return pond;
+    }
+
+    // Función para subir un archivo a AWS S3
+    async function uploadFileToS3(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/upload_file', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          return data.file_url;
+        } else {
+          console.error('Error al subir archivo:', data.message);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error al subir archivo:', error);
+        return null;
+      }
+    }
+
+    // Función para subir múltiples archivos a S3
+    async function uploadFilesToS3(files) {
+      const uploadPromises = files.map(file => {
+        return uploadFileToS3(file.file);
+      });
+
+      try {
+        const fileUrls = await Promise.all(uploadPromises);
+        return fileUrls.filter(url => url !== null);
+      } catch (error) {
+        console.error('Error al subir archivos:', error);
+        return [];
+      }
+    }
+
+    // Función para enviar archivos en el chat
+    async function sendFiles(fileUrls) {
+      if (fileUrls.length === 0 || !currentChatUserId) return;
+
+      for (const fileUrl of fileUrls) {
+        const fileType = getFileTypeFromUrl(fileUrl);
+        const data = {
+          sender: sessionUserId,
+          sender_id: sessionUserId,
+          receiver: currentChatUserId,
+          type: currentChatType,
+          file_url: fileUrl,
+          file_type: fileType
+        };
+
+        // Enviar el mensaje a través de Socket.IO
+        socket.emit('send_message', data);
+      }
+    }
+
+    // Función mejorada para determinar el tipo de archivo basado en la URL
+    function getFileTypeFromUrl(url) {
+      const extension = url.split('.').pop().toLowerCase().split('?')[0];
+
+      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+      const documentExtensions = [
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp'
+      ];
+      const codeExtensions = [
+        'html', 'css', 'js', 'ts', 'jsx', 'tsx', 'json', 'xml', 'yaml', 'yml',
+        'py', 'java', 'c', 'cpp', 'cs', 'php', 'rb', 'go', 'swift', 'kt', 'rs'
+      ];
+      const archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'];
+      const executableExtensions = ['exe', 'msi', 'bin', 'sh', 'bat', 'cmd', 'app', 'jar', 'apk'];
+
+      if (imageExtensions.includes(extension)) return 'image';
+      if (documentExtensions.includes(extension)) return 'document';
+      if (codeExtensions.includes(extension)) return 'code';
+      if (archiveExtensions.includes(extension)) return 'archive';
+      if (executableExtensions.includes(extension)) return 'executable';
+
+      return 'other';
+    }
+
+    function addFileMessageToChat(sender, fileUrl, fileType, tipo = 'received', timestamp = null, avatar = '', messageId = null) {
+      // Verificar si el mensaje ya ha sido procesado
+      if (messageId && processedMessageIds.has(messageId)) {
+        return;
+      }
+
+      const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
+      const template = document.getElementById(templateId).content.cloneNode(true);
+
+      if (tipo === 'received') {
+        template.querySelector('strong').textContent = sender;
+        template.querySelector('.avatar img').src = avatar || '/placeholder.svg';
+      }
+
+      const timeString = timestamp
+        ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Crear el elemento según el tipo de archivo
+      let fileElement;
+
+      if (fileType === 'image') {
+        fileElement = document.createElement('a');
+        fileElement.href = fileUrl;
+        fileElement.setAttribute('data-fancybox', 'gallery');
+        fileElement.className = 'file-message image-message';
+
+        const img = document.createElement('img');
+        img.src = fileUrl;
+        img.alt = 'Imagen compartida';
+        img.style.maxWidth = '200px';
+        img.style.maxHeight = '200px';
+        img.style.borderRadius = '8px';
+
+        fileElement.appendChild(img);
+      } else {
+        fileElement = document.createElement('a');
+        fileElement.href = fileUrl;
+        fileElement.target = '_blank';
+        fileElement.className = 'file-message';
+        fileElement.setAttribute('data-type', fileType); // Para aplicar estilos específicos
+
+        const icon = document.createElement('i');
+
+        // Asignar el icono correcto según el tipo de archivo
+        switch (fileType) {
+          case 'document':
+            icon.className = 'fas fa-file-alt';
+            break;
+          case 'code':
+            icon.className = 'fas fa-file-code';
+            break;
+          case 'archive':
+            icon.className = 'fas fa-file-archive';
+            break;
+          case 'executable':
+            icon.className = 'fas fa-file-code';
+            break;
+          default:
+            icon.className = 'fas fa-file';
+        }
+
+        // Extraer solo el nombre real del archivo sin el ID
+        const fullPath = decodeURIComponent(fileUrl.split('/').pop().split('?')[0]);
+
+        // Intentar extraer solo el nombre del archivo sin el ID
+        let fileName;
+
+        // Buscar patrones comunes como "ID_nombrearchivo.ext"
+        const fileNameMatch = fullPath.match(/[a-f0-9]+_(.+)$/);
+        if (fileNameMatch && fileNameMatch[1]) {
+          fileName = fileNameMatch[1]; // Usar solo la parte después del ID y guion bajo
+        } else {
+          // Si no se encuentra el patrón, usar el nombre completo
+          fileName = fullPath;
+        }
+
+        const fileNameElement = document.createElement('span');
+        fileNameElement.className = 'file-name';
+
+        // Truncar nombres largos (más de 20 caracteres)
+        if (fileName.length > 20) {
+          const extension = fileName.lastIndexOf('.') > -1 ? fileName.substring(fileName.lastIndexOf('.')) : '';
+          const baseName = fileName.substring(0, fileName.lastIndexOf('.') > -1 ? fileName.lastIndexOf('.') : fileName.length);
+
+          if (baseName.length > 16) {
+            // Truncar el nombre base y mantener la extensión
+            fileNameElement.textContent = baseName.substring(0, 16) + '...' + extension;
+            // Agregar el nombre completo como tooltip
+            fileNameElement.title = fileName;
+          } else {
+            fileNameElement.textContent = fileName;
+          }
+        } else {
+          fileNameElement.textContent = fileName;
+        }
+
+        fileElement.appendChild(icon);
+        fileElement.appendChild(document.createTextNode(' '));
+        fileElement.appendChild(fileNameElement);
+
+        // Aplicar estilos según el tipo de mensaje
+        fileElement.style.display = 'flex';
+        fileElement.style.alignItems = 'center';
+        fileElement.style.gap = '8px';
+        fileElement.style.color = '#e0e0e0';
+        fileElement.style.textDecoration = 'none';
+        fileElement.style.padding = '8px';
+        fileElement.style.backgroundColor = tipo === 'sent' ? '#056162' : '#2a2a2a';
+        fileElement.style.borderRadius = '8px';
+        fileElement.style.maxWidth = '100%';
+
+        // Estilos para el nombre del archivo
+        fileNameElement.style.overflow = 'hidden';
+        fileNameElement.style.textOverflow = 'ellipsis';
+        fileNameElement.style.whiteSpace = 'nowrap';
+        fileNameElement.style.maxWidth = 'calc(100% - 30px)';
+      }
+
+      template.querySelector('p').replaceWith(fileElement);
+      template.querySelector('.message-time').textContent = timeString;
+
+      const messagesContainer = document.querySelector('.messages-container');
+      messagesContainer.appendChild(template);
+      scrollToBottom(messagesContainer);
+
+      // Inicializar Fancybox para las imágenes
+      if (fileType === 'image') {
+        $('[data-fancybox="gallery"]').fancybox({
+          buttons: ['zoom', 'download', 'close']
+        });
+      }
+
+      // Agregar el ID del mensaje a la lista de procesados
+      if (messageId) {
+        processedMessageIds.add(messageId);
+      }
+    }
+
   </script>
   <audio id="notification-sound" preload="auto">
     <source src="../static/notifications/notification.mp3" type="audio/mpeg">
