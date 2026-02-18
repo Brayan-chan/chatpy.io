@@ -29,7 +29,7 @@ python3 -m venv venv
 ## Iniciarlizar el entorno virtual para Linux y Mac
 
 ```
-.venv/bin/activate
+source .venv/bin/activate
 ```
 
 ## Instalar las dependecias
