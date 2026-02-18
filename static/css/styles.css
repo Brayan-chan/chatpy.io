@@ -12,7 +12,7 @@ body {
 
 .chat-container {
     display: grid;
-    grid-template-columns:48px 400px 1fr;
+    grid-template-columns: 48px 400px 1fr;
     height: 100vh;
     border: 2px solid #333;
     border-radius: 16px;
@@ -34,7 +34,7 @@ body {
 }
 
 .header-icons {
-    display: flex; 
+    display: flex;
     gap: 1.5rem;
 }
 
@@ -151,7 +151,7 @@ body {
 
 .chat-item {
     display: grid;
-    grid-template-areas: 
+    grid-template-areas:
         "avatar name time"
         "avatar info badge";
     grid-template-columns: auto 1fr auto;
@@ -448,6 +448,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -497,7 +498,7 @@ body {
 }
 
 .modal-content {
-    background-color: #2a2a2a !important; 
+    background-color: #2a2a2a !important;
     margin: 15% auto;
     padding: 20px;
     border: 1px solid #444;
@@ -507,21 +508,24 @@ body {
     text-align: center;
 }
 
-#contact-username, #group-name  {
+#contact-username,
+#group-name {
     margin-top: 10px;
     color: #056162;
     padding: 5px;
     border-radius: 10px;
 }
 
-#add-contact-submit, #add-group-submit {
+#add-contact-submit,
+#add-group-submit {
     margin: 10px;
     background-color: #056162;
     padding: 5px;
     border-radius: 10px;
 }
 
-#add-contact-submit:hover, #add-group-submit:hover {
+#add-contact-submit:hover,
+#add-group-submit:hover {
     background-color: #0a7373;
     transform: scale(0.95);
     transition: 0.5s;
@@ -579,4 +583,260 @@ body {
 
 .videochat-notification button:hover {
     background-color: #056162;
+}
+
+/* Estilos para los mensajes de archivos */
+.file-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e0e0e0;
+    text-decoration: none;
+    /*padding: 8px 12px;*/
+    border-radius: 8px;
+    margin: 4px 0;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.file-message i {
+    font-size: 1.2em;
+    min-width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: calc(100% - 30px);
+}
+
+.file-message span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.image-message img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 8px;
+    display: block;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.image-message img:hover {
+    transform: scale(1.05);
+}
+
+/* Colores específicos para cada tipo de archivo */
+.message.received .file-message[data-type="document"] {
+    background-color: rgba(25, 118, 210, 0.2);
+}
+
+.message.received .file-message[data-type="code"] {
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+.message.received .file-message[data-type="archive"] {
+    background-color: rgba(255, 152, 0, 0.2);
+}
+
+.message.received .file-message[data-type="executable"] {
+    background-color: rgba(244, 67, 54, 0.2);
+}
+
+.message.sent .file-message {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Estilos para el contenedor de carga de archivos */
+#file-upload-container {
+    padding: 10px;
+    background-color: #2a2a2a;
+    border-top: 1px solid #333;
+}
+
+.upload-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#send-files {
+    background-color: #056162;
+    color: white;
+    border-radius: 5px;
+    padding: 8px 16px;
+}
+
+#cancel-upload {
+    background-color: #444;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 5px;
+}
+
+/* Estilos para FilePond */
+.filepond--panel-root {
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+}
+
+.filepond--drop-label {
+    color: #e0e0e0;
+}
+
+.filepond--label-action {
+    color: #056162;
+}
+
+.filepond--file-action-button {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.filepond--file {
+    color: #e0e0e0;
+}
+
+.filepond--file-info {
+    color: #e0e0e0;
+}
+
+.filepond--file-status {
+    color: #8f8f8f;
+}
+
+/* Estilos para archivos que no son imágenes */
+.file-message:not(.image-message) {
+    display: flex;
+    align-items: center;
+    /*gap: 8px;*/
+    color: #e0e0e0;
+    text-decoration: none;
+    /*padding: 8px;*/
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.message.sent .file-message:not(.image-message) {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Ajustes para mensajes con archivos en móvil */
+@media (max-width: 768px) {
+    .message {
+        max-width: 85% !important;
+        /* Aumentar el ancho máximo en móvil */
+    }
+
+    .message-group {
+        margin-right: 8px;
+        /* Añadir margen para evitar que toque el borde */
+    }
+
+    .file-message {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .file-name {
+        max-width: calc(100% - 30px);
+    }
+
+    .file-message span {
+        max-width: calc(100% - 30px);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .image-message img {
+        max-width: 100% !important;
+        /* Imágenes responsivas */
+        height: auto;
+        max-height: 300px;
+        /* Altura máxima en móvil */
+        object-fit: contain;
+    }
+
+    /* Ajustes para archivos que no son imágenes */
+    .file-message:not(.image-message) {
+        width: 100%;
+        padding: 8px;
+        word-break: break-all;
+        /* Romper palabras largas */
+    }
+
+    .file-message:not(.image-message) span {
+        max-width: calc(100% - 24px);
+        /* Espacio para el ícono */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Mejorar la visualización del reproductor de audio */
+    audio {
+        max-width: 100%;
+        margin: 4px 0;
+    }
+
+    /* Ajustar el contenedor de mensajes para mejor espaciado */
+    .messages-container {
+        padding: 0.5rem;
+    }
+
+    /* Mejorar la visualización del nombre del remitente */
+    .message.received strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.85em;
+    }
+
+    /* Ajustar el tiempo del mensaje */
+    .message-time {
+        font-size: 0.7em;
+        margin-top: 2px;
+    }
+
+    .chat-main {
+        height: 100vh;
+        width: 100%;
+    }
+
+    .message-input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #1f1f1f;
+        padding: 8px;
+        z-index: 100;
+    }
+
+    .messages-container {
+        margin-bottom: 60px;
+        /* Espacio para el input de mensaje */
+        height: calc(100vh - 120px);
+        /* Ajustar altura considerando header y input */
+    }
+
+    /* Mejorar la visualización del selector de emojis */
+    #emoji-picker-container {
+        position: fixed;
+        bottom: 60px;
+        /* Altura del input de mensaje */
+        left: 0;
+        width: 100%;
+        z-index: 1;
+    }
+
+    .emoji-picker {
+        width: 100% !important;
+        height: 250px !important;
+    }
 }
