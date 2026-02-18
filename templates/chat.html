@@ -7,11 +7,33 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
   <title>chatpy.io</title>
   <link rel="stylesheet" href="../static/css/styles.css">
+  <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+  <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicon.ico" />
   <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicon.png" />
+  <script src="https://unpkg.com/filepond-plugin-file-encode/dist/filepond-plugin-file-encode.js"></script>
+  <script
+    src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
+  <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
+  <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1259.0.min.js"></script>
+  <!-- CSS de Fancybox -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- JS de Fancybox -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+
+  <!-- CSS de Plyr -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+  <!-- JS de Plyr -->
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <style>
     /* Estilos para dispositivos móviles */
     @media (max-width: 768px) {
@@ -205,9 +227,6 @@
           <button class="action-button" id="group-settings-button">
             <i class="fas fa-ellipsis-v"></i>
           </button>
-          <button class="action-button ml-2" id="context-button">
-            <i class="fas fa-info-circle"></i>
-          </button>
         </div>
       </header>
 
@@ -215,8 +234,17 @@
         <!-- Mensajes se cargarán aquí -->
       </div>
 
+      <div id="file-upload-container"
+        style="display: none; padding: 10px; background-color: #2a2a2a; border-top: 1px solid #333;">
+        <input type="file" class="filepond" name="filepond" multiple>
+        <div class="upload-controls">
+          <button id="cancel-upload" class="action-button">Cancelar</button>
+          <button id="send-files" class="action-button">Enviar</button>
+        </div>
+      </div>
+
       <div class="message-input-container">
-        <button class="action-button">
+        <button class="action-button" id="file-button">
           <i class="fas fa-paperclip"></i>
         </button>
         <button class="action-button" id="emoji-button">
@@ -228,7 +256,7 @@
         <button class="action-button" id="send-button">
           <i class="fas fa-paper-plane"></i>
         </button>
-        <button class="action-button" id="mic-button">
+        <button id="grabar-audio" class="action-button">
           <i class="fas fa-microphone"></i>
         </button>
       </div>
@@ -289,20 +317,6 @@
     </div>
   </div>
 
-  <!-- Modal para contexto de conversación -->
-  <div id="context-modal" class="modal">
-    <div class="modal-content">
-      <span class="close-button">&times;</span>
-      <h2>Resumen del contexto del chat</h2>
-      <div id="context-summary" class="p-4"></div>
-      <div class="flex justify-end mt-4">
-        <button id="insert-context-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          Insertar en el chat
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Template para enviar mensajes -->
   <template id="message-template-sent">
     <div class="message sent">
@@ -325,231 +339,13 @@
     </div>
   </template>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "@google/generative-ai": "https://esm.run/@google/generative-ai"
-      }
-    }
-  </script>
-  <script type="module">
-    import { GoogleGenerativeAI } from "@google/generative-ai";
-
-    let genai;
-
-    // Funcio para inicializar la API de Gemini
-    async function initializeGenAI() {
-      try {
-        const response = await fetch('/get_api_key');
-        const data = await response.json();
-        if (data.status === 'success') {
-          const API_KEY = data.api_key;
-          genai = new GoogleGenerativeAI(API_KEY);
-          console.log('Gemini API initialized successfully');
-        } else {
-          console.error('Error fetching API key:', data.message);
-        }
-      } catch (error) {
-        console.error('Error initializing Gemini API:', error);
-      }
-    }
-    
-    // Inicializar la API de Gemini
-    initializeGenAI();
-
-    // Función para obtener el resumen del contexto
-    async function getMessageContextSummary(messages) {
-      try {
-        if (!genai) {
-          console.error('API de Gemini no inicializada');
-          return 'No se pudo generar el resumen: API no inicializada.';
-        }
-
-        // Formateamos los mensajes para el prompt
-        const formattedMessages = messages.map(m => `${m.sender}: ${m.content}`).join('\n');
-
-        // Creamos el modelo generativo
-        const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        // Creaamos el formato correcto del prompt
-        const prompt = {
-          contents: [{
-            parts: [{ text: `Resume la siguiente conversación de chat. Enfócate en los temas principales y puntos clave discutidos. Responde en español:\n\n${formattedMessages}` }]
-          }]
-        };
-
-        // Generar contenido con el formato correcto
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
-      } catch (error) {
-        console.error('Error al obtener el resumen del contexto:', error);
-        return `No se pudo generar el resumen en este momento. Error: ${error.message}`;
-      }
-    }
-
-    // Obtener referencias a elementos del DOM
-    const headerRight = document.querySelector('.header-right');
-    const contextButton = document.getElementById('context-button');
-    contextButton.title = 'Get chat context';
-
-    // Crear el modal de contexto
-    const contextModal = document.getElementById('context-modal');
-
-    // Agregar botón de insertar en el chat
-    const insertContextButton = document.getElementById('insert-context-button');
-    let currentContextSummary = '';
-
-    // Modificar la función que maneja el botón de contexto para guardar el resumen
-    contextButton.addEventListener('click', async () => {
-      const contactId = currentChatUserId;
-      if (!contactId) {
-        alert('Selecciona un chat primero para obtener el resumen del contexto');
-        return;
-      }
-
-      contextModal.style.display = 'block';
-      const summaryElement = document.getElementById('context-summary');
-      summaryElement.textContent = 'Generando resumen...';
-      currentContextSummary = ''; // Reiniciar el resumen actual
-
-      try {
-        const response = await fetch(`/get_latest_messages?contact_id=${contactId}`);
-        const data = await response.json();
-        if (data.status === 'success' && data.messages && data.messages.length > 0) {
-          // Formatear los mensajes para Gemini
-          const messages = data.messages.map(m => ({
-            sender: m.sender,
-            content: m.message
-          }));
-
-          // Invertir el orden para que estén en orden cronológico (los más antiguos primero)
-          messages.reverse();
-
-          if (messages.length === 0) {
-            summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
-            return;
-          }
-
-          const summary = await getMessageContextSummary(messages);
-          summaryElement.innerHTML = summary.replace(/\n/g, '<br>'); // Convertir saltos de línea a <br>
-          currentContextSummary = summary; // Guardar el resumen para usarlo después
-        } else {
-          summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
-        }
-      } catch (error) {
-        console.error('Error al obtener los mensajes:', error);
-        summaryElement.textContent = 'Error al obtener los mensajes: ' + error.message;
-      }
-    });
-
-    // Agregar manejador de eventos para el botón de insertar
-    insertContextButton.addEventListener('click', () => {
-      if (!currentContextSummary || !currentChatUserId) {
-        alert('No hay un resumen disponible para insertar o no hay un chat seleccionado');
-        return;
-      }
-
-      // Enviar el resumen como un mensaje de tipo "ai"
-      sendAIMessage(currentContextSummary);
-
-      // Cerrar el modal
-      contextModal.style.display = 'none';
-    });
-
-    // Función para enviar un mensaje como si fuera de la IA
-    function sendAIMessage(message) {
-      if (message.trim() !== '' && currentChatUserId) {
-        const data = {
-          sender: 'ai', // Usamos 'ai' como remitente especial
-          receiver: currentChatUserId,
-          type: currentChatType,
-          message: message,
-          is_ai: true // Marcamos que es un mensaje de IA
-        };
-
-        // Enviar el mensaje al servidor
-        fetch('/send_ai_message', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              // Mostrar el mensaje en el chat como recibido
-              addMessageToChat('Asistente IA', message, 'received', null, 'https://storage.googleapis.com/gweb-uniblog-publish-prod/images/IO24_WhatsInAName_Hero_1.width-1200.format-webp.webp');
-            } else {
-              console.error('Error al enviar mensaje de IA:', data.message);
-            }
-          })
-          .catch(error => console.error('Error:', error));
-      }
-    }
-
-    // Actualizar el manejador de eventos del botón de contexto
-    contextButton.addEventListener('click', async () => {
-      const contactId = currentChatUserId;
-      if (!contactId) {
-        alert('Selecciona un chat primero para obtener el resumen del contexto');
-        return;
-      }
-
-      contextModal.style.display = 'block';
-      const summaryElement = document.getElementById('context-summary');
-      summaryElement.textContent = 'Generando resumen...';
-
-      try {
-        // Obtenemos los ultimos mensajes del chat
-        const response = await fetch(`/get_latest_messages?contact_id=${contactId}`);
-        const data = await response.json();
-        if (data.status === 'success' && data.messages && data.messages.length > 0) {
-          // Formatear los mensajes para Gemini
-          const messages = data.messages.map(m => ({
-            sender: m.sender,
-            content: m.message
-          }));
-
-          // Invertir el orden para que estén en orden cronológico (los más antiguos primero)
-          messages.reverse();
-
-          if (messages.length === 0) {
-            summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
-            return;
-          }
-
-          const summary = await getMessageContextSummary(messages);
-          summaryElement.innerHTML = summary.replace(/\n/g, '<br>'); // Convertir saltos de línea a <br>
-        } else {
-          summaryElement.textContent = 'No hay mensajes suficientes para generar un resumen.';
-        }
-      } catch (error) {
-        console.error('Error al obtener los mensajes:', error);
-        summaryElement.textContent = 'Error al obtener los mensajes: ' + error.message;
-      }
-    });
-
-    // Agregamos un manejador de eventos al cerrar el modal
-    const closeContextModal = contextModal.querySelector('.close-button');
-    closeContextModal.addEventListener('click', () => {
-      contextModal.style.display = 'none';
-    });
-
-    // Asignamos un evento al modal para cerrarlo al hacer clic fuera de él
-    window.addEventListener('click', (event) => {
-      if (event.target === contextModal) {
-        contextModal.style.display = 'none';
-      }
-    });
-  </script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   <script>
     const socket = io();
     let currentRoomId = null;
     let notificationsEnabled = true;
+    let s3; // Definir la variable s3
+    let S3_BUCKET_NAME; // Definir la variable S3_BUCKET_NAME
 
     function playNotificationSound() {
       if (!notificationsEnabled) return; // No reproducir si las notificaciones están desactivadas
@@ -701,28 +497,47 @@
       }
     });
 
+    // Lista para almacenar los IDs de los mensajes ya procesados
+    const processedMessageIds = new Set();
+
     // Manejo de nuevos mensajes: se muestran si corresponden al chat activo, y si no, se actualiza el badge
     socket.on('new_message', (data) => {
-      const { sender, receiver, message, type } = data;
+      const { sender, sender_id, receiver, message, type, audio_url, file_url, file_type, _id, sender_avatar } = data;
+
+      // Determinar si el mensaje es enviado o recibido
+      const isSentByMe = sender_id === sessionUserId;
+      const msgType = isSentByMe ? 'sent' : 'received';
 
       // Determinar si debemos reproducir el sonido (solo si el mensaje no es del usuario actual)
-      const shouldPlaySound = sender !== sessionUserId;
+      const shouldPlaySound = !isSentByMe;
 
       if (type === 'group') {
         if (currentChatType === 'group' && receiver === currentChatUserId) {
-          addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received');
+          if (audio_url) {
+            addAudioMessageToChat(sender, audio_url, msgType, null, sender_avatar, _id);
+          } else if (file_url && file_type) {
+            addFileMessageToChat(sender, file_url, file_type, msgType, null, sender_avatar, _id);
+          } else if (message) {
+            addMessageToChat(sender, message, msgType, null, sender_avatar, _id);
+          }
         } else {
           updateUnreadBadge(receiver);
-          if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
+          if (shouldPlaySound) playNotificationSound();
         }
       } else {
         // Mensaje privado
-        if (currentChatType === 'private' && (sender === currentChatUserId || receiver === currentChatUserId)) {
-          addMessageToChat(sender, message, sender === sessionUserId ? 'sent' : 'received');
+        if (currentChatType === 'private' && (sender_id === currentChatUserId || receiver === currentChatUserId)) {
+          if (audio_url) {
+            addAudioMessageToChat(sender, audio_url, msgType, null, sender_avatar, _id);
+          } else if (file_url && file_type) {
+            addFileMessageToChat(sender, file_url, file_type, msgType, null, sender_avatar, _id);
+          } else if (message) {
+            addMessageToChat(sender, message, msgType, null, sender_avatar, _id);
+          }
         } else {
-          const chatId = (sender === sessionUserId) ? receiver : sender;
+          const chatId = isSentByMe ? receiver : sender_id;
           updateUnreadBadge(chatId);
-          if (shouldPlaySound) playNotificationSound(); // Reproducir sonido solo si no es un mensaje propio
+          if (shouldPlaySound) playNotificationSound();
         }
       }
     });
@@ -766,38 +581,49 @@
         messageInput.focus();
       });
 
-    // Modificar la función addMessageToChat para manejar mensajes de IA
-    // Modificar la función addMessageToChat para manejar mensajes de IA
     function addMessageToChat(nombre, contenido, tipo = 'received', timestamp = null, avatar = '') {
       const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
       const template = document.getElementById(templateId).content.cloneNode(true);
-
       if (tipo === 'received') {
-        // Verificar si es un mensaje de IA
-        const isAI = nombre === 'Asistente IA';
-
-        // Establecer el nombre del remitente
         template.querySelector('strong').textContent = nombre;
-
-        // Establecer el avatar
         template.querySelector('.avatar img').src = avatar;
-
-        // Si es un mensaje de IA, agregar una clase especial para estilizarlo diferente
-        if (isAI) {
-          const messageElement = template.querySelector('.message.received');
-          messageElement.classList.add('ai-message');
-        }
       }
-
       const timeString = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
       template.querySelector('p').textContent = contenido;
       template.querySelector('.message-time').textContent = timeString;
-
       const messagesContainer = document.querySelector('.messages-container');
       messagesContainer.appendChild(template);
       scrollToBottom(messagesContainer);
+    }
+
+    function addAudioMessageToChat(nombre, audioUrl, tipo = 'received', timestamp = null, avatar = '', messageId = null) {
+      // Verificar si el mensaje ya ha sido procesado
+      if (messageId && processedMessageIds.has(messageId)) {
+        return;
+      }
+
+      const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
+      const template = document.getElementById(templateId).content.cloneNode(true);
+      if (tipo === 'received') {
+        template.querySelector('strong').textContent = nombre;
+        template.querySelector('.avatar img').src = avatar;
+      }
+      const timeString = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const audioElement = document.createElement('audio');
+      audioElement.src = audioUrl;
+      audioElement.controls = true;
+      template.querySelector('p').replaceWith(audioElement);
+      template.querySelector('.message-time').textContent = timeString;
+      const messagesContainer = document.querySelector('.messages-container');
+      messagesContainer.appendChild(template);
+      scrollToBottom(messagesContainer);
+
+      // Agregar el ID del mensaje a la lista de procesados
+      if (messageId) {
+        processedMessageIds.add(messageId);
+      }
     }
 
     function loadMessagesWith(contactId) {
@@ -808,17 +634,18 @@
             const messagesContainer = document.querySelector('.messages-container');
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
-              // Determinar el tipo de mensaje (enviado, recibido o IA)
-              let msgType = 'received';
-              if (message.sender_id === sessionUserId) {
-                msgType = 'sent';
+              const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
+
+              // Manejar diferentes tipos de mensajes
+              if (message.audio_url) {
+                addAudioMessageToChat(message.sender, message.audio_url, msgType, message.sent_at, message.sender_avatar);
+              } else if (message.file_url && message.file_type) {
+                // Renderizar mensajes de archivo
+                addFileMessageToChat(message.sender, message.file_url, message.file_type, msgType, message.sent_at, message.sender_avatar);
+              } else if (message.message) {
+                // Mensajes de texto normales
+                addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
               }
-
-              // Usar el avatar correcto para mensajes de IA
-              const avatar = message.is_ai ? message.sender_avatar : message.sender_avatar;
-
-              // Agregar el mensaje al chat
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, avatar);
             });
 
             // Actualizar el avatar y el título del chat
@@ -832,6 +659,7 @@
         })
         .catch(error => console.error('Error:', error));
     }
+
     function loadGroupMessages(groupId) {
       fetch(`/get_group_messages/${groupId}`)
         .then(response => response.json())
@@ -841,8 +669,19 @@
             messagesContainer.innerHTML = '';
             data.messages.forEach(message => {
               const msgType = message.sender_id === sessionUserId ? 'sent' : 'received';
-              addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+
+              // Manejar diferentes tipos de mensajes
+              if (message.audio_url) {
+                addAudioMessageToChat(message.sender, message.audio_url, msgType, message.sent_at, message.sender_avatar);
+              } else if (message.file_url && message.file_type) {
+                // Renderizar mensajes de archivo
+                addFileMessageToChat(message.sender, message.file_url, message.file_type, msgType, message.sent_at, message.sender_avatar);
+              } else if (message.message) {
+                // Mensajes de texto normales
+                addMessageToChat(message.sender, message.message, msgType, message.sent_at, message.sender_avatar);
+              }
             });
+
             // Actualizar el avatar y el título del grupo
             const group = data.group;
             document.getElementById('chat-avatar').src = group.profile_pic || 'https://via.placeholder.com/150?text=Grupo';
@@ -892,6 +731,49 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      const fileButton = document.getElementById('file-button');
+      const fileUploadContainer = document.getElementById('file-upload-container');
+      const cancelUploadButton = document.getElementById('cancel-upload');
+      const sendFilesButton = document.getElementById('send-files');
+      let pond;
+
+      // Inicializar FilePond
+      pond = initializeFilePond();
+      // Mostrar/ocultar el contenedor de carga de archivos
+      fileButton.addEventListener('click', function () {
+        fileUploadContainer.style.display = fileUploadContainer.style.display === 'none' ? 'block' : 'none';
+      });
+
+      // Cancelar la carga de archivos
+      cancelUploadButton.addEventListener('click', function () {
+        pond.removeFiles();
+        fileUploadContainer.style.display = 'none';
+      });
+
+      // Enviar archivos
+      sendFilesButton.addEventListener('click', async function () {
+        const files = pond.getFiles();
+        if (files.length === 0) return;
+
+        // Mostrar indicador de carga
+        sendFilesButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        sendFilesButton.disabled = true;
+
+        // Subir archivos a S3
+        const fileUrls = await uploadFilesToS3(files);
+
+        // Enviar archivos en el chat
+        await sendFiles(fileUrls);
+
+        // Limpiar y ocultar el contenedor de carga
+        pond.removeFiles();
+        fileUploadContainer.style.display = 'none';
+
+        // Restaurar el botón
+        sendFilesButton.innerHTML = 'Enviar';
+        sendFilesButton.disabled = false;
+      });
+
       // Cargar la preferencia de notificaciones guardada
       const savedNotificationPreference = localStorage.getItem('notificationsEnabled');
       if (savedNotificationPreference !== null) {
@@ -915,6 +797,7 @@
 
       loadContacts();
       loadGroups();
+      getAWSCredentials();
     });
 
     // Agregar item de contacto a la lista de chats (se asigna data-id)
@@ -1158,6 +1041,11 @@
     const CLOUDINARY_CLOUD_NAME = 'dmyejrbs7';
     const CLOUDINARY_UPLOAD_PRESET = 'apuntes';
 
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioUrl = null;
+    let audioBlob = null;
+
     function openCloudinaryUploader() {
       cloudinary.openUploadWidget({
         cloudName: CLOUDINARY_CLOUD_NAME,
@@ -1199,6 +1087,76 @@
             .catch(error => console.error('Error:', error));
         }
       });
+    }
+
+    document.getElementById('grabar-audio').addEventListener('click', grabarAudio);
+
+    async function subirAudio(blob) {
+      const params = {
+        Bucket: S3_BUCKET_NAME,
+        Key: 'audios/' + Date.now() + '.webm',
+        Body: blob,
+        ContentType: 'audio/webm'
+      };
+
+      try {
+        const data = await s3.upload(params).promise();
+        console.log('Audio subido con éxito:', data.Location);
+        return data.Location;
+      } catch (error) {
+        console.error('Error al subir el audio:', error);
+        alert('Error al subir el audio. Por favor, revisa la consola para más detalles.');
+        return null;
+      }
+    }
+
+    function grabarAudio() {
+      const button = document.getElementById('grabar-audio');
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Tu navegador no soporta la grabación de audio. Por favor, usa un navegador compatible como Chrome o Firefox.');
+        return;
+      }
+
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        button.innerHTML = '<i class="fas fa-microphone"></i>'; // Restaurar el ícono original
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start();
+          button.innerHTML = '<i class="fas fa-stop"></i>'; // Cambiar a ícono de detener
+
+          audioChunks = [];
+          mediaRecorder.addEventListener("dataavailable", event => {
+            audioChunks.push(event.data);
+          });
+
+          mediaRecorder.addEventListener("stop", async () => {
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = await subirAudio(blob);
+            if (audioUrl) {
+              const data = {
+                sender: sessionUserId,
+                receiver: currentChatUserId,
+                type: currentChatType,
+                audio_url: audioUrl
+              };
+
+              // Enviar el mensaje a través de Socket.IO
+              socket.emit('send_message', data);
+
+              // NO agregar el mensaje manualmente aquí, ya que llegará a través de Socket.IO
+
+              // Detener todas las pistas del stream para liberar el micrófono
+              stream.getTracks().forEach(track => track.stop());
+            }
+          });
+        })
+        .catch(error => console.error('Error al grabar audio:', error));
     }
 
     // Asignar el evento al botón de la barra lateral
@@ -1274,6 +1232,300 @@
         }
       });
     }
+
+    // Función para obtener las credenciales de AWS
+    function getAWSCredentials() {
+      fetch('/get_aws_credentials')
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            AWS.config.update({
+              accessKeyId: data.access_key,
+              secretAccessKey: data.secret_key,
+              region: 'us-east-2' // Ejemplo: 'us-east-1'
+            });
+            S3_BUCKET_NAME = data.s3_bucket;
+            s3 = new AWS.S3(); // Inicializar la variable s3
+            console.log('Credenciales de AWS obtenidas con éxito');
+          } else {
+            console.error('Error al obtener credenciales de AWS:', data.message);
+          }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Función para inicializar FilePond
+    // Función para inicializar FilePond con más tipos de archivos permitidos
+    function initializeFilePond() {
+      // Registrar plugins de FilePond
+      FilePond.registerPlugin(
+        FilePondPluginFileEncode,
+        FilePondPluginFileValidateType,
+        FilePondPluginImagePreview
+      );
+
+      // Crear instancia de FilePond
+      const pond = FilePond.create(document.querySelector('.filepond'), {
+        allowMultiple: true,
+        maxFiles: 5,
+        // Ampliar los tipos de archivos aceptados
+        acceptedFileTypes: [
+          'image/*',                                                  // Imágenes
+          'application/pdf',                                          // PDF
+          'application/msword',                                       // DOC
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+          'application/vnd.ms-powerpoint',                            // PPT
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+          'application/vnd.ms-excel',                                 // XLS
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+          'text/plain',                                               // TXT
+          'text/html',                                                // HTML
+          'text/css',                                                 // CSS
+          'text/javascript',                                          // JS
+          'application/json',                                         // JSON
+          'application/xml',                                          // XML
+          'application/zip',                                          // ZIP
+          'application/x-rar-compressed',                             // RAR
+          'application/x-7z-compressed',                              // 7Z
+          'application/x-msdownload',                                 // EXE
+          'application/x-sh',                                         // SH
+          'application/x-python',                                     // Python
+          'application/java-archive',                                 // JAR
+          'application/octet-stream'                                  // Binarios genéricos
+        ],
+        labelIdle: 'Arrastra y suelta archivos o <span class="filepond--label-action">Examinar</span>',
+        labelFileTypeNotAllowed: 'Tipo de archivo no válido',
+        fileValidateTypeLabelExpectedTypes: 'Se esperan archivos de tipo {allTypes}',
+        labelMaxFileSizeExceeded: 'El archivo es demasiado grande',
+        labelMaxFileSize: 'El tamaño máximo de archivo es {filesize}',
+        maxFileSize: '20MB' // Aumentar el tamaño máximo para archivos más grandes
+      });
+
+      return pond;
+    }
+
+    // Función para subir un archivo a AWS S3
+    async function uploadFileToS3(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/upload_file', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          return data.file_url;
+        } else {
+          console.error('Error al subir archivo:', data.message);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error al subir archivo:', error);
+        return null;
+      }
+    }
+
+    // Función para subir múltiples archivos a S3
+    async function uploadFilesToS3(files) {
+      const uploadPromises = files.map(file => {
+        return uploadFileToS3(file.file);
+      });
+
+      try {
+        const fileUrls = await Promise.all(uploadPromises);
+        return fileUrls.filter(url => url !== null);
+      } catch (error) {
+        console.error('Error al subir archivos:', error);
+        return [];
+      }
+    }
+
+    // Función para enviar archivos en el chat
+    async function sendFiles(fileUrls) {
+      if (fileUrls.length === 0 || !currentChatUserId) return;
+
+      for (const fileUrl of fileUrls) {
+        const fileType = getFileTypeFromUrl(fileUrl);
+        const data = {
+          sender: sessionUserId,
+          sender_id: sessionUserId,
+          receiver: currentChatUserId,
+          type: currentChatType,
+          file_url: fileUrl,
+          file_type: fileType
+        };
+
+        // Enviar el mensaje a través de Socket.IO
+        socket.emit('send_message', data);
+      }
+    }
+
+    // Función mejorada para determinar el tipo de archivo basado en la URL
+    function getFileTypeFromUrl(url) {
+      const extension = url.split('.').pop().toLowerCase().split('?')[0];
+
+      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+      const documentExtensions = [
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp'
+      ];
+      const codeExtensions = [
+        'html', 'css', 'js', 'ts', 'jsx', 'tsx', 'json', 'xml', 'yaml', 'yml',
+        'py', 'java', 'c', 'cpp', 'cs', 'php', 'rb', 'go', 'swift', 'kt', 'rs'
+      ];
+      const archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'];
+      const executableExtensions = ['exe', 'msi', 'bin', 'sh', 'bat', 'cmd', 'app', 'jar', 'apk'];
+
+      if (imageExtensions.includes(extension)) return 'image';
+      if (documentExtensions.includes(extension)) return 'document';
+      if (codeExtensions.includes(extension)) return 'code';
+      if (archiveExtensions.includes(extension)) return 'archive';
+      if (executableExtensions.includes(extension)) return 'executable';
+
+      return 'other';
+    }
+
+    function addFileMessageToChat(sender, fileUrl, fileType, tipo = 'received', timestamp = null, avatar = '', messageId = null) {
+      // Verificar si el mensaje ya ha sido procesado
+      if (messageId && processedMessageIds.has(messageId)) {
+        return;
+      }
+
+      const templateId = tipo === 'sent' ? 'message-template-sent' : 'message-template-received';
+      const template = document.getElementById(templateId).content.cloneNode(true);
+
+      if (tipo === 'received') {
+        template.querySelector('strong').textContent = sender;
+        template.querySelector('.avatar img').src = avatar || '/placeholder.svg';
+      }
+
+      const timeString = timestamp
+        ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Crear el elemento según el tipo de archivo
+      let fileElement;
+
+      if (fileType === 'image') {
+        fileElement = document.createElement('a');
+        fileElement.href = fileUrl;
+        fileElement.setAttribute('data-fancybox', 'gallery');
+        fileElement.className = 'file-message image-message';
+
+        const img = document.createElement('img');
+        img.src = fileUrl;
+        img.alt = 'Imagen compartida';
+        img.style.maxWidth = '200px';
+        img.style.maxHeight = '200px';
+        img.style.borderRadius = '8px';
+
+        fileElement.appendChild(img);
+      } else {
+        fileElement = document.createElement('a');
+        fileElement.href = fileUrl;
+        fileElement.target = '_blank';
+        fileElement.className = 'file-message';
+        fileElement.setAttribute('data-type', fileType); // Para aplicar estilos específicos
+
+        const icon = document.createElement('i');
+
+        // Asignar el icono correcto según el tipo de archivo
+        switch (fileType) {
+          case 'document':
+            icon.className = 'fas fa-file-alt';
+            break;
+          case 'code':
+            icon.className = 'fas fa-file-code';
+            break;
+          case 'archive':
+            icon.className = 'fas fa-file-archive';
+            break;
+          case 'executable':
+            icon.className = 'fas fa-file-code';
+            break;
+          default:
+            icon.className = 'fas fa-file';
+        }
+
+        // Extraer solo el nombre real del archivo sin el ID
+        const fullPath = decodeURIComponent(fileUrl.split('/').pop().split('?')[0]);
+
+        // Intentar extraer solo el nombre del archivo sin el ID
+        let fileName;
+
+        // Buscar patrones comunes como "ID_nombrearchivo.ext"
+        const fileNameMatch = fullPath.match(/[a-f0-9]+_(.+)$/);
+        if (fileNameMatch && fileNameMatch[1]) {
+          fileName = fileNameMatch[1]; // Usar solo la parte después del ID y guion bajo
+        } else {
+          // Si no se encuentra el patrón, usar el nombre completo
+          fileName = fullPath;
+        }
+
+        const fileNameElement = document.createElement('span');
+        fileNameElement.className = 'file-name';
+
+        // Truncar nombres largos (más de 20 caracteres)
+        if (fileName.length > 20) {
+          const extension = fileName.lastIndexOf('.') > -1 ? fileName.substring(fileName.lastIndexOf('.')) : '';
+          const baseName = fileName.substring(0, fileName.lastIndexOf('.') > -1 ? fileName.lastIndexOf('.') : fileName.length);
+
+          if (baseName.length > 16) {
+            // Truncar el nombre base y mantener la extensión
+            fileNameElement.textContent = baseName.substring(0, 16) + '...' + extension;
+            // Agregar el nombre completo como tooltip
+            fileNameElement.title = fileName;
+          } else {
+            fileNameElement.textContent = fileName;
+          }
+        } else {
+          fileNameElement.textContent = fileName;
+        }
+
+        fileElement.appendChild(icon);
+        fileElement.appendChild(document.createTextNode(' '));
+        fileElement.appendChild(fileNameElement);
+
+        // Aplicar estilos según el tipo de mensaje
+        fileElement.style.display = 'flex';
+        fileElement.style.alignItems = 'center';
+        fileElement.style.gap = '8px';
+        fileElement.style.color = '#e0e0e0';
+        fileElement.style.textDecoration = 'none';
+        fileElement.style.padding = '8px';
+        fileElement.style.backgroundColor = tipo === 'sent' ? '#056162' : '#2a2a2a';
+        fileElement.style.borderRadius = '8px';
+        fileElement.style.maxWidth = '100%';
+
+        // Estilos para el nombre del archivo
+        fileNameElement.style.overflow = 'hidden';
+        fileNameElement.style.textOverflow = 'ellipsis';
+        fileNameElement.style.whiteSpace = 'nowrap';
+        fileNameElement.style.maxWidth = 'calc(100% - 30px)';
+      }
+
+      template.querySelector('p').replaceWith(fileElement);
+      template.querySelector('.message-time').textContent = timeString;
+
+      const messagesContainer = document.querySelector('.messages-container');
+      messagesContainer.appendChild(template);
+      scrollToBottom(messagesContainer);
+
+      // Inicializar Fancybox para las imágenes
+      if (fileType === 'image') {
+        $('[data-fancybox="gallery"]').fancybox({
+          buttons: ['zoom', 'download', 'close']
+        });
+      }
+
+      // Agregar el ID del mensaje a la lista de procesados
+      if (messageId) {
+        processedMessageIds.add(messageId);
+      }
+    }
+
   </script>
   <audio id="notification-sound" preload="auto">
     <source src="../static/notifications/notification.mp3" type="audio/mpeg">
